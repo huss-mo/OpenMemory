@@ -190,6 +190,24 @@ class RelationsConfig(BaseSettings):
     dedup_threshold: float = 0.92
 
 
+class MCPConfig(BaseSettings):
+    """MCP server configuration.
+
+    Environment variables (prefix: OPENMEMORY_MCP__):
+        HOST – host address the server binds to
+        PORT – TCP port the server listens on
+    """
+
+    model_config = SettingsConfigDict(
+        env_prefix="OPENMEMORY_MCP__",
+        env_file=".env",
+        extra="ignore",
+    )
+
+    host: str = "0.0.0.0"
+    port: int = 4242
+
+
 class BootstrapConfig(BaseSettings):
     """Bootstrap injection configuration.
 
@@ -259,6 +277,7 @@ class OpenMemoryConfig(BaseSettings):
     relations: RelationsConfig = Field(default_factory=RelationsConfig)
     compaction: CompactionConfig = Field(default_factory=CompactionConfig)
     bootstrap: BootstrapConfig = Field(default_factory=BootstrapConfig)
+    mcp: MCPConfig = Field(default_factory=MCPConfig)
 
     @property
     def workspace_path(self) -> Path:
@@ -291,6 +310,7 @@ class OpenMemoryConfig(BaseSettings):
         relations_data = data.pop("relations", {})
         compaction_data = data.pop("compaction", {})
         bootstrap_data = data.pop("bootstrap", {})
+        mcp_data = data.pop("mcp", {})
 
         def _filter_env_overrides(yaml_dict: dict, env_prefix: str) -> dict:
             """Remove keys from yaml_dict that are already set via environment variables."""
@@ -308,6 +328,7 @@ class OpenMemoryConfig(BaseSettings):
         relations = RelationsConfig(**_filter_env_overrides(relations_data, "OPENMEMORY_RELATIONS__"))
         compaction = CompactionConfig(**_filter_env_overrides(compaction_data, "OPENMEMORY_COMPACTION__"))
         bootstrap = BootstrapConfig(**_filter_env_overrides(bootstrap_data, "OPENMEMORY_BOOTSTRAP__"))
+        mcp = MCPConfig(**_filter_env_overrides(mcp_data, "OPENMEMORY_MCP__"))
 
         return cls(
             embedding=embedding,
@@ -316,6 +337,7 @@ class OpenMemoryConfig(BaseSettings):
             relations=relations,
             compaction=compaction,
             bootstrap=bootstrap,
+            mcp=mcp,
             **data,
         )
 

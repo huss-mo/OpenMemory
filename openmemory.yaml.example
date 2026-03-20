@@ -132,3 +132,12 @@ compaction:
   # Messages injected at the flush turn (override if you need custom wording)
   # system_prompt: "Session nearing compaction. Store durable memories now."
   # user_prompt: "Review the conversation and write lasting facts to memory using memory_write. Reply DONE when finished."
+
+# ---------------------------------------------------------------------------
+# MCP server (openmemory-mcp command)
+# ---------------------------------------------------------------------------
+# mcp:
+#   # Host address the MCP server binds to
+#   host: 0.0.0.0
+#   # TCP port the MCP server listens on
+#   port: 4242

@@ -36,6 +36,7 @@ dev = [
 
 [project.scripts]
 openmemory = "openmemory.cli:main"
+openmemory-mcp = "openmemory.mcp_server:main"
 
 [build-system]
 requires = ["hatchling"]

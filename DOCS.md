@@ -9,10 +9,14 @@ For a project overview, see [README.md](README.md).
 
 - [OpenMemory — Documentation](#openmemory--documentation)
   - [Table of Contents](#table-of-contents)
-  - [Quickstart](#quickstart)
+  - [MCP Server](#mcp-server)
+    - [Running the Server](#running-the-server)
+    - [Environment Variables](#environment-variables-1)
+    - [Client Configuration](#client-configuration)
   - [Connecting to Your AI Agent](#connecting-to-your-ai-agent)
     - [OpenAI](#openai)
     - [Anthropic](#anthropic)
+  - [Python API Example](#python-api-example)
   - [Configuration](#configuration)
     - [Minimum Config](#minimum-config)
     - [openmemory.yaml Reference](#openmemoryyaml-reference)
@@ -20,33 +24,86 @@ For a project overview, see [README.md](README.md).
 
 ---
 
-## Quickstart
+## MCP Server
 
-```python
-from openmemory.session import MemorySession
+OpenMemory can run as a standalone MCP (Model Context Protocol) server over HTTP, exposing all 6 memory tools to any MCP-compatible client — including Claude Desktop, Cursor, Cline, and custom agents.
 
-# Create (or reopen) a named workspace
-session = MemorySession.create("my-project")
+Each server instance owns a single workspace. Multiple workspaces require multiple server processes running on different ports.
 
-# Write a long-term memory
-session.execute_tool("memory_write", content="User prefers concise answers.", tier="long_term")
+### Running the Server
 
-# Write a daily log entry
-session.execute_tool("memory_write", content="Working on the auth service refactor.", tier="daily")
+Installing the `mcp` extra (see the [Installation section in README.md](README.md#installation)) registers the `openmemory-mcp` console script. After running `pip install -e ".[mcp]"` (or `uv sync --extra mcp`) the command is available in your environment's `PATH`.
 
-# Record a relationship between entities
-session.execute_tool("memory_relate", subject="Alice", predicate="works_at", object="Acme Corp")
+```bash
+# Default: workspace "default", host 0.0.0.0, port 4242
+openmemory-mcp
 
-# Search across all memory tiers
-result = session.execute_tool("memory_search", query="communication preferences")
-for item in result["data"]["results"]:
-    print(item["content"])
+# Custom workspace
+OPENMEMORY_WORKSPACE=my-project openmemory-mcp
 
-# Build the system prompt context block for your agent
-system_prompt = session.bootstrap()
+# Custom host and port
+OPENMEMORY_MCP_HOST=127.0.0.1 OPENMEMORY_MCP_PORT=9000 openmemory-mcp
 ```
 
-`MemorySession.create("my-project")` creates a workspace directory at `~/.openmemory/my-project/` on first run, seeding all required files. Subsequent calls reopen the same workspace.
+The server starts at `http://<host>:<port>/mcp` using the `streamable-http` MCP transport.
+
+### Environment Variables
+
+| Variable | Description | Default |
+|---|---|---|
+| `OPENMEMORY_WORKSPACE` | Workspace name (directory under `OPENMEMORY_ROOT_DIR`) | `default` |
+| `OPENMEMORY_MCP_HOST` | Host address the server binds to | `0.0.0.0` |
+| `OPENMEMORY_MCP_PORT` | TCP port the server listens on | `4242` |
+
+All standard `OPENMEMORY_*` configuration variables (embedding provider, search settings, etc.) apply as usual — see [Environment Variables](#environment-variables) below.
+
+### Client Configuration
+
+Add the following to your client's MCP server configuration. The exact file path depends on the client:
+
+| Client | Config file |
+|---|---|
+| Claude Desktop (macOS) | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| Claude Desktop (Windows) | `%APPDATA%\Claude\claude_desktop_config.json` |
+| Cursor | `.cursor/mcp.json` in your project root, or `~/.cursor/mcp.json` globally |
+| Cline (VS Code) | MCP Servers panel → "Configure MCP Servers" |
+
+**Config snippet** (same format for all clients):
+
+```json
+{
+  "mcpServers": {
+    "openmemory": {
+      "url": "http://localhost:4242/mcp"
+    }
+  }
+}
+```
+
+For a custom port (e.g. `9000`):
+
+```json
+{
+  "mcpServers": {
+    "openmemory": {
+      "url": "http://localhost:9000/mcp"
+    }
+  }
+}
+```
+
+### Available MCP Tools
+
+Once connected, the client has access to all 6 memory tools:
+
+| Tool | Description |
+|---|---|
+| `memory_write` | Store a memory in long-term storage (`MEMORY.md`) or today's daily log |
+| `memory_search` | Hybrid semantic + keyword search across all memory tiers |
+| `memory_get` | Read a slice of a workspace file by line range |
+| `memory_list` | List workspace files or preview a specific file |
+| `memory_delete` | Delete a line range from a workspace file |
+| `memory_relate` | Record a typed entity relationship (`subject → predicate → object`) |
 
 ---
 
@@ -117,6 +174,36 @@ for block in response.content:
         result = session.execute_tool(block.name, **block.input)
         print(result)
 ```
+
+---
+
+## Python API Example
+
+```python
+from openmemory.session import MemorySession
+
+# Create (or reopen) a named workspace
+session = MemorySession.create("my-project")
+
+# Write a long-term memory
+session.execute_tool("memory_write", content="User prefers concise answers.", tier="long_term")
+
+# Write a daily log entry
+session.execute_tool("memory_write", content="Working on the auth service refactor.", tier="daily")
+
+# Record a relationship between entities
+session.execute_tool("memory_relate", subject="Alice", predicate="works_at", object="Acme Corp")
+
+# Search across all memory tiers
+result = session.execute_tool("memory_search", query="communication preferences")
+for item in result["data"]["results"]:
+    print(item["content"])
+
+# Build the system prompt context block for your agent
+system_prompt = session.bootstrap()
+```
+
+`MemorySession.create("my-project")` creates a workspace directory at `~/.openmemory/my-project/` on first run, seeding all required files. Subsequent calls reopen the same workspace.
 
 ---
 

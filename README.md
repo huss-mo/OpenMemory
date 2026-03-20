@@ -69,6 +69,43 @@ uv sync --extra local   # for sentence-transformers support
 
 ### Quickstart
 
+#### Option 1 — MCP Server (recommended)
+
+OpenMemory can run as an HTTP MCP server, making all 6 memory tools available to any MCP-compatible client (Claude Desktop, Cursor, Cline, or any custom agent).
+
+**Install with MCP support** (adds the `openmemory-mcp` command):
+
+```bash
+pip install -e ".[mcp]"
+# or
+uv sync --extra mcp
+```
+
+**Start the server:**
+
+```bash
+OPENMEMORY_WORKSPACE=my-project openmemory-mcp
+# → listening on http://0.0.0.0:4242/mcp
+```
+
+**Point your client at it:**
+
+```json
+{
+  "mcpServers": {
+    "openmemory": {
+      "url": "http://localhost:4242/mcp"
+    }
+  }
+}
+```
+
+For environment variables, multi-workspace setup, and per-client config file paths, see the [MCP Server section in DOCS.md](DOCS.md#mcp-server).
+
+---
+
+#### Option 2 — Python API
+
 ```python
 from openmemory.session import MemorySession
 
