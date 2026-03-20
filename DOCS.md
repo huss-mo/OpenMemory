@@ -11,17 +11,34 @@ For a project overview, see [README.md](README.md).
   - [Table of Contents](#table-of-contents)
   - [MCP Server](#mcp-server)
     - [Running the Server](#running-the-server)
-    - [Environment Variables](#environment-variables-1)
+    - [Environment Variables](#environment-variables)
     - [Client Configuration](#client-configuration)
+    - [Available MCP Tools](#available-mcp-tools)
   - [Connecting to Your AI Agent](#connecting-to-your-ai-agent)
     - [OpenAI](#openai)
     - [Anthropic](#anthropic)
   - [Python API Example](#python-api-example)
   - [Architecture](#architecture)
+    - [Architectural Layers](#architectural-layers)
+      - [1. Workspace (`openmemory/core/workspace.py`)](#1-workspace-openmemorycoreworkspacepy)
+      - [2. Memory Storage (`openmemory/core/storage.py`)](#2-memory-storage-openmemorycorestoragepy)
+      - [3. Text Chunker (`openmemory/core/chunker.py`)](#3-text-chunker-openmemorycorechunkerpy)
+      - [4. Embedding Providers (`openmemory/core/embeddings.py`)](#4-embedding-providers-openmemorycoreembeddingspy)
+      - [5. Memory Index (`openmemory/core/index.py`)](#5-memory-index-openmemorycoreindexpy)
+      - [6. Hybrid Search (`openmemory/core/search.py`)](#6-hybrid-search-openmemorycoresearchpy)
+      - [7. Relation Graph (`openmemory/core/graph.py`)](#7-relation-graph-openmemorycoregraphpy)
+      - [8. Sync (`openmemory/core/sync.py`)](#8-sync-openmemorycoresyncpy)
+      - [9. Bootstrap Injector (`openmemory/bootstrap/injector.py`)](#9-bootstrap-injector-openmemorybootstrapinjectorpy)
+      - [10. Compaction Hooks (`openmemory/bootstrap/compaction.py`)](#10-compaction-hooks-openmemorybootstrapcompactionpy)
+      - [11. Tools (`openmemory/tools/`)](#11-tools-openmemorytools)
+      - [12. LLM Adapters (`openmemory/adapters/`)](#12-llm-adapters-openmemoryadapters)
+      - [13. Session (`openmemory/session.py`)](#13-session-openmemorysessionpy)
+  - [Data Flow](#data-flow)
+  - [Tech Stack](#tech-stack)
   - [Configuration](#configuration)
     - [Minimum Config](#minimum-config)
     - [openmemory.yaml Reference](#openmemoryyaml-reference)
-    - [Environment Variables](#environment-variables)
+    - [Environment Variables](#environment-variables-1)
 
 ---
 
@@ -33,7 +50,7 @@ Each server instance owns a single workspace. Multiple workspaces require multip
 
 ### Running the Server
 
-Installing the `mcp` extra (see the [Installation section in README.md](README.md#installation)) registers the `openmemory-mcp` console script. After running `pip install -e ".[mcp]"` (or `uv sync --extra mcp`) the command is available in your environment's `PATH`.
+The `openmemory-mcp` command is available after installing OpenMemory (MCP support is included by default).
 
 ```bash
 # Default: workspace "default", host 0.0.0.0, port 4242

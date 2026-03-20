@@ -1,22 +1,31 @@
 """OpenMemory MCP server — exposes all 6 memory tools over HTTP (streamable-http transport)."""
 from __future__ import annotations
 
+import atexit
 import json
 
 from mcp.server.fastmcp import FastMCP
 
 from openmemory.config import OpenMemoryConfig
-from openmemory.session import MemorySession
 
 # ---------------------------------------------------------------------------
-# Bootstrap — one session per server instance
+# Lazy session — created once on first tool call, not at import time.
+# This avoids filesystem side-effects when the module is merely imported
+# (e.g. during testing or static analysis).
 # ---------------------------------------------------------------------------
-# OpenMemoryConfig.auto() honours the full priority chain:
-#   constructor kwargs > env vars > .env file > openmemory.yaml > defaults
-# so OPENMEMORY_WORKSPACE, OPENMEMORY_MCP__HOST, and OPENMEMORY_MCP__PORT can
-# all be set in .env or openmemory.yaml without touching the shell.
-_cfg = OpenMemoryConfig.auto()
-session = MemorySession.create(_cfg.workspace)
+_session = None
+
+
+def _get_session():
+    global _session
+    if _session is None:
+        from openmemory.session import MemorySession
+
+        cfg = OpenMemoryConfig.auto()
+        _session = MemorySession.create(cfg.workspace, config=cfg)
+        atexit.register(_session.close)
+    return _session
+
 
 mcp = FastMCP("OpenMemory")
 
@@ -25,16 +34,18 @@ mcp = FastMCP("OpenMemory")
 # Internal helper
 # ---------------------------------------------------------------------------
 
+
 def _unwrap(result: dict) -> str:
     """Return JSON string of result, raising ValueError on tool errors."""
-    if result.get("status") == "error":
-        raise ValueError(result.get("message", "unknown error"))
+    if not result.get("ok"):
+        raise ValueError(result.get("error", "unknown error"))
     return json.dumps(result)
 
 
 # ---------------------------------------------------------------------------
 # Tools
 # ---------------------------------------------------------------------------
+
 
 @mcp.tool()
 def memory_write(
@@ -49,7 +60,7 @@ def memory_write(
         tier: Storage tier — "long_term" (MEMORY.md) or "daily" (today's log).
         tags: Optional list of string tags to attach to the memory.
     """
-    return _unwrap(session.execute_tool("memory_write", content=content, tier=tier, tags=tags))
+    return _unwrap(_get_session().execute_tool("memory_write", content=content, tier=tier, tags=tags))
 
 
 @mcp.tool()
@@ -71,7 +82,7 @@ def memory_search(
         kwargs["top_k"] = top_k
     if source is not None:
         kwargs["source"] = source
-    return _unwrap(session.execute_tool("memory_search", **kwargs))
+    return _unwrap(_get_session().execute_tool("memory_search", **kwargs))
 
 
 @mcp.tool()
@@ -90,7 +101,7 @@ def memory_get(
     kwargs: dict = {"file": file, "start_line": start_line}
     if end_line is not None:
         kwargs["end_line"] = end_line
-    return _unwrap(session.execute_tool("memory_get", **kwargs))
+    return _unwrap(_get_session().execute_tool("memory_get", **kwargs))
 
 
 @mcp.tool()
@@ -107,7 +118,7 @@ def memory_list(
     kwargs: dict = {"target": target}
     if file is not None:
         kwargs["file"] = file
-    return _unwrap(session.execute_tool("memory_list", **kwargs))
+    return _unwrap(_get_session().execute_tool("memory_list", **kwargs))
 
 
 @mcp.tool()
@@ -126,7 +137,7 @@ def memory_delete(
         reason: Human-readable reason recorded in the tombstone comment.
     """
     return _unwrap(
-        session.execute_tool(
+        _get_session().execute_tool(
             "memory_delete",
             file=file,
             start_line=start_line,
@@ -159,7 +170,7 @@ def memory_relate(
         confidence: Confidence score between 0.0 and 1.0 (default: 1.0).
     """
     return _unwrap(
-        session.execute_tool(
+        _get_session().execute_tool(
             "memory_relate",
             subject=subject,
             predicate=predicate,
@@ -174,6 +185,7 @@ def memory_relate(
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     cfg = OpenMemoryConfig.auto()

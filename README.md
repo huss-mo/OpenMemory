@@ -73,14 +73,6 @@ uv sync --extra local   # for sentence-transformers support
 
 OpenMemory can run as an HTTP MCP server, making all 6 memory tools available to any MCP-compatible client (Claude Desktop, Cursor, Cline, or any custom agent).
 
-**Install with MCP support** (adds the `openmemory-mcp` command):
-
-```bash
-pip install -e ".[mcp]"
-# or
-uv sync --extra mcp
-```
-
 **Start the server:**
 
 ```bash
@@ -226,7 +218,7 @@ pytest tests/
 pytest tests/ --cov=openmemory --cov-report=term-missing
 ```
 
-The test suite has 108 tests: 99 unit tests and 9 integration tests. Integration tests are marked with `@pytest.mark.embeddings` and require an embedding provider to be configured via `openmemory.yaml` or environment variables.
+Integration tests are marked with `@pytest.mark.embeddings` and require an embedding provider to be configured via `openmemory.yaml` or environment variables.
 
 ### Submitting a PR
 
