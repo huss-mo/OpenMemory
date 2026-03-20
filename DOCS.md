@@ -120,6 +120,170 @@ for block in response.content:
 
 ---
 
+## Architecture
+
+### Architectural Layers
+
+#### 1. Workspace (`openmemory/core/workspace.py`)
+Manages the filesystem layout for a single memory workspace. On first use it creates the directory tree and seeds default Markdown files. All other layers receive a `Workspace` object to resolve file paths.
+
+```
+<workspace_path>/
+├── MEMORY.md        long-term curated memory (written by memory_write tier="long_term")
+├── USER.md          stable user profile (edited manually or by the agent)
+├── AGENTS.md        agent operating instructions (seeded with sensible defaults)
+├── RELATIONS.md     human-readable mirror of the entity relation graph
+├── daily/
+│   └── YYYY-MM-DD.md   append-only daily logs (written by memory_write tier="daily")
+└── .index/
+    └── memory.db    SQLite index (chunks + FTS5 + relations + embedding cache)
+```
+
+#### 2. Memory Storage (`openmemory/core/storage.py`)
+Low-level atomic Markdown file I/O. All writes go through a temp-file + rename cycle to prevent partial writes. Provides `write_long_term`, `write_daily`, `read_file`, `delete_lines`, and `list_daily_files`.
+
+#### 3. Text Chunker (`openmemory/core/chunker.py`)
+Splits Markdown files into overlapping chunks that respect heading boundaries. Each `Chunk` carries a deterministic `chunk_id` (SHA-256 of path + start line + text) and 0-indexed line ranges for precise `memory_get` retrieval.
+
+#### 4. Embedding Providers (`openmemory/core/embeddings.py`)
+Abstract `EmbeddingProvider` with three concrete implementations:
+
+| Provider | Class | When to use |
+|---|---|---|
+| `none` | `NullEmbeddingProvider` | Zero-dep BM25-only mode — returns empty vectors |
+| `local` | `SentenceTransformerProvider` | Offline embeddings via `sentence-transformers` |
+| `openai` | `OpenAICompatibleProvider` | Any OpenAI-compatible HTTP endpoint (OpenAI, Ollama, LM Studio, LiteLLM, …) |
+
+#### 5. Memory Index (`openmemory/core/index.py`)
+SQLite database (`memory.db`) with five tables:
+
+| Table | Purpose |
+|---|---|
+| `files` | Tracks indexed files with SHA-256 hash + mtime for change detection |
+| `chunks` | Text chunks with JSON-serialised embedding vectors |
+| `chunks_fts` | FTS5 virtual table — BM25 keyword search via SQLite triggers |
+| `relations` | Named entity relationships (subject → predicate → object) |
+| `embedding_cache` | Reuses embeddings when chunk content hasn't changed |
+
+Vector search is implemented in pure Python (NumPy cosine similarity) so it works everywhere without native extensions. The database runs in WAL (Write-Ahead Logging) mode (`PRAGMA journal_mode=WAL`) for better concurrent read performance.
+
+#### 6. Hybrid Search (`openmemory/core/search.py`)
+Seven-step pipeline:
+1. **Embed** the query via the configured provider.
+2. **Vector search** — cosine similarity over all chunk embeddings → top `k × candidate_multiplier` candidates.
+3. **Keyword search** — FTS5 BM25 → top `k × candidate_multiplier` candidates.
+4. **Merge & re-score** — `score = vector_weight × vec_score + (1 − vector_weight) × bm25_score`.
+5. **Temporal decay** — `score × exp(−decay_rate × days_old)` (disabled by default).
+6. **Graph expansion** — extract entity mentions from top results, attach related relation triples as `relation_context`.
+7. Return top `k` as `SearchResult` objects.
+
+#### 7. Relation Graph (`openmemory/core/graph.py`)
+Stores typed entity triples (`subject → predicate → object`) in two places simultaneously:
+- **SQLite** `relations` table — fast structured lookup.
+- **`RELATIONS.md`** — human-readable, editable, injected at bootstrap.
+
+Semantic deduplication: before inserting, the new triple is embedded and compared (cosine similarity) against all existing triples. If similarity ≥ `dedup_threshold` (default 0.92) the write is skipped and the existing triple is returned.
+
+#### 8. Sync (`openmemory/core/sync.py`)
+Keeps the SQLite index consistent with the Markdown files using SHA-256 content hashing (not timestamps). `sync_workspace` walks all files and re-indexes changed ones. `sync_file` force-syncs a single file — called immediately after every `memory_write` so new content is searchable within the same session.
+
+#### 9. Bootstrap Injector (`openmemory/bootstrap/injector.py`)
+Assembles a system-prompt block from workspace files, respecting per-file and total character budgets (`max_chars_per_file`, `max_total_chars`). Truncated files get a visible `[TRUNCATED — use memory_get to read the rest]` marker. Injects (in order): long-term memory, user profile, agent instructions, relation graph, yesterday's and today's daily logs.
+
+#### 10. Compaction Hooks (`openmemory/bootstrap/compaction.py`)
+`should_flush(current_tokens, context_window, cfg)` returns `True` when the remaining context budget drops below the configured threshold. `get_compaction_prompts(cfg)` returns the `{system, user}` messages the agent uses to flush important facts to storage before the window is summarised.
+
+#### 11. Tools (`openmemory/tools/`)
+Six JSON-schema-described tools exposed to the LLM via function calling:
+
+| Tool | File written | Notes |
+|---|---|---|
+| `memory_write` | `MEMORY.md` or `daily/YYYY-MM-DD.md` | Immediately re-indexes the changed file |
+| `memory_search` | — | Full hybrid search pipeline |
+| `memory_get` | — | Line-range read of any workspace file |
+| `memory_list` | — | Directory listing or file preview |
+| `memory_delete` | Any workspace file | Tombstone-style deletion with audit comment; re-indexes |
+| `memory_relate` | `RELATIONS.md` + SQLite | Semantic dedup before insert |
+
+#### 12. LLM Adapters (`openmemory/adapters/`)
+Thin schema-conversion + agentic-loop helpers:
+- **`adapters/openai.py`** — converts schemas to OpenAI function-calling format; `handle_tool_calls` dispatches tool calls and appends results to the message list; `run_agent_loop` iterates until the model stops calling tools.
+- **`adapters/anthropic.py`** — same for Anthropic's `tool_use` / `tool_result` block format.
+
+#### 13. Session (`openmemory/session.py`)
+`MemorySession` is the composition root that holds references to `Workspace`, `MemoryIndex`, and `EmbeddingProvider`. It exposes `execute_tool`, `bootstrap`, `sync`, `should_compact`, and `compaction_prompts` as the primary API surface.
+
+---
+
+## Data Flow
+
+```
+User message
+     │
+     ▼
+MemorySession.bootstrap()
+     │  Reads MEMORY.md, USER.md, AGENTS.md, RELATIONS.md, daily logs
+     │  → assembled into system prompt block
+     ▼
+LLM receives system prompt + tool schemas + user message
+     │
+     │  Model may call memory tools:
+     │
+     ├─► memory_write(content, tier)
+     │       └─► storage.write_long_term / write_daily  → appends to Markdown
+     │       └─► sync.sync_file                         → chunk → embed → upsert SQLite
+     │
+     ├─► memory_search(query, top_k, source)
+     │       └─► provider.embed(query)                  → query vector
+     │       └─► index.vector_search                    → cosine top-k
+     │       └─► index.keyword_search                   → FTS5 BM25 top-k
+     │       └─► merge + decay + graph expansion        → ranked SearchResult list
+     │
+     ├─► memory_get(file, start_line, end_line)
+     │       └─► storage.read_file                      → raw Markdown slice
+     │
+     ├─► memory_list(target, file)
+     │       └─► workspace.all_memory_files / storage   → file listing / preview
+     │
+     ├─► memory_delete(file, start_line, end_line)
+     │       └─► storage.delete_lines                   → tombstone in Markdown
+     │       └─► sync.sync_file                         → re-index
+     │
+     └─► memory_relate(subject, predicate, object)
+             └─► graph._find_semantic_duplicate          → cosine dedup check
+             └─► index.insert_relation                  → SQLite relations table
+             └─► storage._atomic_write                  → append to RELATIONS.md
+     │
+     ▼
+Agent response returned to user
+     │
+     (optionally)
+     ▼
+session.should_compact(current_tokens, context_window)
+     │  True → inject compaction_prompts → agent flushes session to memory_write
+     ▼
+Next session: session.bootstrap() reloads persisted facts
+```
+
+---
+
+## Tech Stack
+
+| Component | Technology |
+|---|---|
+| Language | Python 3.10+ |
+| Configuration | Pydantic Settings + PyYAML (YAML file + env vars) |
+| Database | SQLite via `sqlite3` stdlib, WAL mode (`PRAGMA journal_mode=WAL`) |
+| Full-text search | SQLite FTS5 (BM25) with auto-sync triggers |
+| Vector search | NumPy cosine similarity (pure Python; no native extension required) |
+| Embeddings — local | `sentence-transformers` (optional extra) |
+| Embeddings — remote | Any OpenAI-compatible HTTP endpoint via `httpx` |
+| HTTP client | `httpx` |
+| Packaging | `hatchling` build backend (`pyproject.toml`), installable via `uv` or `pip` |
+| Tests | `pytest` (108 tests: 99 unit, 9 integration) |
+
+---
+
 ## Configuration
 
 ### Minimum Config
@@ -272,6 +436,9 @@ compaction:
   # system_prompt: "Session nearing compaction. Store durable memories now."
   # user_prompt: "Review the conversation and write lasting facts to memory. Reply DONE when finished."
 ```
+
+
+---
 
 ### Environment Variables
 

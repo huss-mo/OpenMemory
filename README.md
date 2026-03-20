@@ -1,6 +1,8 @@
+<img src="./_assets/icon.png" alt="om logo" width="140"> 
+
 # OpenMemory
 
-**Persistent, semantic memory for AI agents — local-first, framework-agnostic, production-ready.**
+**Persistent, semantic memory for AI agents - local-first, framework-agnostic, production-ready.**
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![Tests](https://img.shields.io/badge/tests-108%20passing-brightgreen.svg)](#running-the-test-suite)
