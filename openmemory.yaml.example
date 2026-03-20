@@ -1,0 +1,134 @@
+# OpenMemory — YAML Configuration Reference
+# Copy this file to openmemory.yaml (in your project root or cwd) and edit as needed.
+#
+# Priority order (highest wins):
+#   1. Constructor kwargs (programmatic)
+#   2. Environment variables  (OPENMEMORY_* with __ nesting)
+#   3. .env file
+#   4. openmemory.yaml        ← this file
+#   5. Built-in defaults
+#
+# Usage in code:
+#   from openmemory.config import OpenMemoryConfig
+#   cfg = OpenMemoryConfig.from_yaml()          # auto-search for openmemory.yaml
+#   cfg = OpenMemoryConfig.from_yaml("my.yaml") # explicit path
+#   cfg = OpenMemoryConfig.auto()               # YAML if found, else env/defaults
+
+# ---------------------------------------------------------------------------
+# General
+# ---------------------------------------------------------------------------
+
+# Root directory for all workspaces (default: ~/.openmemory)
+# root_dir: ~/.openmemory
+
+# Default workspace name
+# workspace: default
+
+# ---------------------------------------------------------------------------
+# Embedding provider
+# ---------------------------------------------------------------------------
+embedding:
+  # provider options:
+  #   "local"  — sentence-transformers (requires: uv sync --extra local)
+  #   "openai" — OpenAI-compatible HTTP API
+  #   "none"   — BM25 keyword search only (no vector search, no GPU needed)
+  provider: none
+
+  # --- sentence-transformers (provider: local) ---
+  # Any model from https://www.sbert.net/docs/pretrained_models.html
+  # local_model: all-MiniLM-L6-v2      # fast, 384-dim, good quality
+  # local_model: all-mpnet-base-v2     # slower, 768-dim, higher quality
+
+  # --- OpenAI-compatible API (provider: openai) ---
+  # Supports: OpenAI, Ollama, LM Studio, vLLM, Mistral, Together, etc.
+  #
+  # Real OpenAI (leave base_url blank):
+  # base_url: ~
+  # api_key: sk-...
+  # model: text-embedding-3-small
+  #
+  # Ollama local server:
+  # base_url: http://localhost:11434/v1
+  # api_key: ollama          # required by the OpenAI client but ignored by Ollama
+  # model: nomic-embed-text  # pull with: ollama pull nomic-embed-text
+  #
+  # LM Studio:
+  # base_url: http://localhost:1234/v1
+  # api_key: lm-studio
+  # model: nomic-ai/nomic-embed-text-v1.5-GGUF
+  #
+  # OpenRouter:
+  # base_url: https://openrouter.ai/api/v1
+  # api_key: sk-or-...
+  # model: openai/text-embedding-3-small
+
+  # Number of texts sent per embedding API call
+  # batch_size: 64
+
+# ---------------------------------------------------------------------------
+# Hybrid search
+# ---------------------------------------------------------------------------
+search:
+  # Number of results returned by memory_search
+  top_k: 6
+
+  # Oversampling factor: top_k * candidate_multiplier candidates fetched per
+  # path (vector + keyword) before merging and re-ranking
+  candidate_multiplier: 4
+
+  # Weight for vector similarity score (0.0–1.0)
+  # keyword_weight = 1.0 - vector_weight
+  # Set to 0.0 for pure BM25 (useful when provider: none)
+  vector_weight: 0.7
+
+  # Temporal decay: score *= exp(-decay_rate * days_old)
+  # 0.0 disables decay; 0.01 halves relevance after ~70 days
+  temporal_decay_rate: 0.0
+
+  # MMR (Maximal Marginal Relevance) diversity
+  # 0.0 = disabled (pure relevance), 1.0 = maximum diversity
+  mmr_lambda: 0.0
+
+# ---------------------------------------------------------------------------
+# Text chunking
+# ---------------------------------------------------------------------------
+chunking:
+  # Target chunk size in approximate tokens (1 token ≈ 4 chars)
+  tokens: 400
+
+  # Overlap between consecutive chunks in approximate tokens
+  overlap: 80
+
+# ---------------------------------------------------------------------------
+# Bootstrap — system-prompt injection at session start
+# ---------------------------------------------------------------------------
+bootstrap:
+  # Maximum characters per file before a truncation warning is appended
+  max_chars_per_file: 20000
+
+  # Maximum total characters injected across all files
+  max_total_chars: 150000
+
+  # Which memory files to inject into the system prompt
+  inject_long_term_memory: true  # MEMORY.md
+  inject_user_profile: true      # USER.md
+  inject_agents: true            # AGENTS.md
+  inject_daily_logs: true        # daily/YYYY-MM-DD.md (today + yesterday)
+  inject_relations: true         # RELATIONS.md
+
+# ---------------------------------------------------------------------------
+# Compaction — pre-context-window-flush hooks
+# ---------------------------------------------------------------------------
+compaction:
+  # Enable compaction detection
+  enabled: true
+
+  # Tokens remaining in the context window that trigger should_compact() = True
+  soft_threshold_tokens: 4000
+
+  # Minimum tokens always kept free for the model's response
+  reserve_floor_tokens: 20000
+
+  # Messages injected at the flush turn (override if you need custom wording)
+  # system_prompt: "Session nearing compaction. Store durable memories now."
+  # user_prompt: "Review the conversation and write lasting facts to memory using memory_write. Reply DONE when finished."

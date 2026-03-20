@@ -1,0 +1,1 @@
+"""Bootstrap package — system-prompt injection and compaction helpers."""
