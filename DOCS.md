@@ -17,6 +17,7 @@ For a project overview, see [README.md](README.md).
     - [OpenAI](#openai)
     - [Anthropic](#anthropic)
   - [Python API Example](#python-api-example)
+  - [Architecture](#architecture)
   - [Configuration](#configuration)
     - [Minimum Config](#minimum-config)
     - [openmemory.yaml Reference](#openmemoryyaml-reference)
@@ -75,18 +76,6 @@ Add the following to your client's MCP server configuration. The exact file path
   "mcpServers": {
     "openmemory": {
       "url": "http://localhost:4242/mcp"
-    }
-  }
-}
-```
-
-For a custom port (e.g. `9000`):
-
-```json
-{
-  "mcpServers": {
-    "openmemory": {
-      "url": "http://localhost:9000/mcp"
     }
   }
 }
