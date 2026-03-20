@@ -263,19 +263,30 @@ class OpenMemoryConfig(BaseSettings):
         else:
             data = _load_yaml_config()
 
-        # Build nested sub-configs from YAML data, then let env vars win
+        # Build nested sub-configs from YAML data, then let env vars win.
+        # pydantic-settings gives init kwargs HIGHER priority than env vars,
+        # so we must NOT pass a YAML field as a kwarg if an env var is set for it.
         embedding_data = data.pop("embedding", {})
         chunking_data = data.pop("chunking", {})
         search_data = data.pop("search", {})
         compaction_data = data.pop("compaction", {})
         bootstrap_data = data.pop("bootstrap", {})
 
+        def _filter_env_overrides(yaml_dict: dict, env_prefix: str) -> dict:
+            """Remove keys from yaml_dict that are already set via environment variables."""
+            filtered = {}
+            for k, v in yaml_dict.items():
+                env_key = f"{env_prefix}{k.upper()}"
+                if not os.environ.get(env_key):
+                    filtered[k] = v
+            return filtered
+
         # Instantiate sub-configs (env vars override YAML values automatically)
-        embedding = EmbeddingConfig(**embedding_data)
-        chunking = ChunkingConfig(**chunking_data)
-        search = SearchConfig(**search_data)
-        compaction = CompactionConfig(**compaction_data)
-        bootstrap = BootstrapConfig(**bootstrap_data)
+        embedding = EmbeddingConfig(**_filter_env_overrides(embedding_data, "OPENMEMORY_EMBEDDING__"))
+        chunking = ChunkingConfig(**_filter_env_overrides(chunking_data, "OPENMEMORY_CHUNKING__"))
+        search = SearchConfig(**_filter_env_overrides(search_data, "OPENMEMORY_SEARCH__"))
+        compaction = CompactionConfig(**_filter_env_overrides(compaction_data, "OPENMEMORY_COMPACTION__"))
+        bootstrap = BootstrapConfig(**_filter_env_overrides(bootstrap_data, "OPENMEMORY_BOOTSTRAP__"))
 
         return cls(
             embedding=embedding,

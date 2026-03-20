@@ -86,6 +86,7 @@ class MemorySession:
             workspace=self.workspace,
             index=self.index,
             provider=self.provider,
+            chunking=self.config.chunking,
             force=force,
         )
 

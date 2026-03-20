@@ -49,11 +49,11 @@ def run(session, target: str = "files", file: str | None = None) -> dict:
 
     # --- peek at a specific file ---
     if file:
-        try:
-            resolved = ws.resolve_file(file)
-        except FileNotFoundError:
+        resolved = ws.resolve_file(file)
+        if not resolved.exists():
             return err(f"File not found: {file}")
-        lines = storage.read_file(resolved)
+        content = storage.read_file(resolved)
+        lines = content.splitlines()
         return ok(
             {
                 "file": file,
@@ -64,11 +64,11 @@ def run(session, target: str = "files", file: str | None = None) -> dict:
 
     # --- list daily files ---
     if target == "daily":
-        daily_files = storage.list_daily_files(ws.daily_dir)
+        daily_names = storage.list_daily_files(ws)
         return ok(
             {
-                "daily_files": [str(p.name) for p in daily_files],
-                "count": len(daily_files),
+                "daily_files": daily_names,
+                "count": len(daily_names),
             }
         )
 
@@ -77,7 +77,8 @@ def run(session, target: str = "files", file: str | None = None) -> dict:
     entries = []
     for path in all_files:
         try:
-            lines = storage.read_file(path)
+            content = storage.read_file(path)
+            lines = content.splitlines()
             rel = path.relative_to(ws.workspace_path)
         except Exception:
             rel = path

@@ -35,8 +35,7 @@ def _read_capped(path: Path, max_chars: int) -> tuple[str, bool]:
     """
     if not path.exists():
         return "", False
-    lines = storage.read_file(path)
-    full = "\n".join(lines)
+    full = storage.read_file(path)
     if len(full) <= max_chars:
         return full, False
     return full[:max_chars], True

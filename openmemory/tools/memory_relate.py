@@ -64,16 +64,17 @@ def run(
 ) -> dict:
     ws = session.workspace
 
+    clamped_confidence = max(0.0, min(1.0, confidence))
+
     try:
         _graph.add_relation(
             index=session.index,
-            workspace=ws,
+            relations_file=ws.relations_file,
             subject=subject.strip(),
             predicate=predicate.strip(),
-            obj=object.strip(),
+            object_=object.strip(),
             note=note,
-            source_file=source_file,
-            confidence=max(0.0, min(1.0, confidence)),
+            confidence=clamped_confidence,
         )
     except Exception as exc:  # noqa: BLE001
         return err(f"Failed to record relation: {exc}")
@@ -86,7 +87,7 @@ def run(
                 "object": object,
                 "note": note,
                 "source_file": source_file,
-                "confidence": confidence,
+                "confidence": clamped_confidence,
             }
         }
     )

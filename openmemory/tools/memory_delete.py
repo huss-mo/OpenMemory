@@ -51,29 +51,31 @@ def run(
 ) -> dict:
     ws = session.workspace
 
-    try:
-        resolved = ws.resolve_file(file)
-    except FileNotFoundError:
+    resolved = ws.resolve_file(file)
+    if not resolved.exists():
         return err(f"File not found: {file}")
 
     try:
-        deleted_count = storage.delete_lines(resolved, start_line, end_line, reason)
+        result = storage.delete_lines(resolved, start_line, end_line)
     except (ValueError, IOError) as exc:
         return err(str(exc))
+
+    if "error" in result:
+        return err(result["error"])
 
     # Re-index the file so the index reflects the deletion immediately.
     try:
         from openmemory.core.sync import sync_file
 
-        sync_file(resolved, session.index, session.provider)
+        sync_file(resolved, session.index, session.provider, session.config.chunking)
     except Exception as exc:  # noqa: BLE001
         # Non-fatal: the file was deleted correctly; index will catch up on next sync.
         return ok(
             {
                 "file": file,
-                "deleted_lines": deleted_count,
+                "deleted_lines": result.get("deleted_lines", f"{start_line}-{end_line}"),
                 "warning": f"Index sync failed: {exc}",
             }
         )
 
-    return ok({"file": file, "deleted_lines": deleted_count})
+    return ok({"file": file, "deleted_lines": result.get("deleted_lines", f"{start_line}-{end_line}")})

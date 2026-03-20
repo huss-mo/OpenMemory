@@ -96,8 +96,8 @@ def sync_workspace(
             embeddings = _embed_with_cache(texts, provider, index)
 
             # Delete old chunks for this file, then insert new ones
+            # upsert_file MUST come before upsert_chunks (FK constraint)
             index.delete_chunks_for_file(path_str)
-            index.upsert_chunks(chunks, embeddings, provider.model_id)
             index.upsert_file(
                 path=path_str,
                 source=source,
@@ -105,6 +105,7 @@ def sync_workspace(
                 mtime=stat.st_mtime,
                 size=stat.st_size,
             )
+            index.upsert_chunks(chunks, embeddings, provider.model_id)
 
             if existing:
                 summary["updated"] += 1
@@ -154,7 +155,7 @@ def sync_file(
 
         embeddings = _embed_with_cache([c.text for c in chunks], provider, index)
         index.delete_chunks_for_file(str(path))
-        index.upsert_chunks(chunks, embeddings, provider.model_id)
+        # upsert_file MUST come before upsert_chunks (FK constraint)
         index.upsert_file(
             path=str(path),
             source=source,
@@ -162,6 +163,7 @@ def sync_file(
             mtime=stat.st_mtime,
             size=stat.st_size,
         )
+        index.upsert_chunks(chunks, embeddings, provider.model_id)
         return {"status": "synced", "file": str(path), "chunks": len(chunks)}
     except Exception as e:
         return {"status": "error", "file": str(path), "error": str(e)}
