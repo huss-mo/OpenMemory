@@ -84,6 +84,9 @@ def memory_write(
       govern *how the agent operates* in future sessions (e.g. "always search
       memory before answering", "prefer bullet points over prose").
 
+      Ensure that the memory you are trying to write does not already exist in 
+      the target tier using the memory_search tool before writing.
+
     Args:
         content: The text to store. Be concise and specific.
         tier: One of "long_term", "daily", "user", or "agent" (see above).
