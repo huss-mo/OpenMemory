@@ -56,6 +56,7 @@ services:
   #   volumes:
   #     - ./data:/data
   #   env_file:
-  #     - .env
+  #     - path: .env
+  #       required: false
   #   environment:
   #     OPENMEMORY_WORKSPACE: personal

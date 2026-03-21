@@ -244,6 +244,44 @@ class TestVectorSearch:
 
 
 @pytest.mark.embeddings
+class TestSentenceTransformerProvider:
+    """Direct unit tests for SentenceTransformerProvider (no session required)."""
+
+    @pytest.fixture(scope="class")
+    def provider(self):
+        from openmemory.core.embeddings import SentenceTransformerProvider
+        return SentenceTransformerProvider(model_name="all-MiniLM-L6-v2")
+
+    def test_import_no_error(self):
+        """sentence-transformers can be imported without error."""
+        from openmemory.core.embeddings import SentenceTransformerProvider  # noqa: F401
+
+    def test_model_id(self, provider):
+        assert provider.model_id == "sentence-transformers/all-MiniLM-L6-v2"
+
+    def test_dimensions(self, provider):
+        assert provider.dimensions == 384
+
+    def test_embed_empty_returns_empty(self, provider):
+        assert provider.embed([]) == []
+
+    def test_embed_single_returns_384_dim_vector(self, provider):
+        vecs = provider.embed(["hello world"])
+        assert len(vecs) == 1
+        assert len(vecs[0]) == 384
+
+    def test_embed_multiple_returns_correct_count(self, provider):
+        texts = ["foo", "bar", "baz"]
+        vecs = provider.embed(texts)
+        assert len(vecs) == 3
+        assert all(len(v) == 384 for v in vecs)
+
+    def test_embed_values_are_floats(self, provider):
+        vecs = provider.embed(["check types"])
+        assert all(isinstance(x, float) for x in vecs[0])
+
+
+@pytest.mark.embeddings
 class TestEndToEndMemorySearch:
     def test_memory_search_tool_with_real_embeddings(
         self, embeddings_session, tmp_path_factory

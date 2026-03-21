@@ -10,8 +10,8 @@ For a project overview and quick start, see [README.md](README.md).
 - [OpenMemory - Documentation](#openmemory---documentation)
   - [Table of Contents](#table-of-contents)
   - [Installation \& Configuration](#installation--configuration)
-    - [Docker](#docker)
-    - [pip](#pip)
+    - [Option 1 - Docker](#option-1---docker)
+    - [Option 2 - pip](#option-2---pip)
     - [Embedding Providers](#embedding-providers)
   - [MCP Server](#mcp-server)
     - [Running the Server](#running-the-server)
@@ -49,7 +49,7 @@ For a project overview and quick start, see [README.md](README.md).
 
 ## Installation & Configuration
 
-### Docker
+### Option 1 - Docker
 
 Docker is the recommended way to run OpenMemory. It requires no Python environment setup and keeps your workspace data in a local `./data` directory.
 
@@ -58,7 +58,7 @@ git clone https://github.com/huss-mo/OpenMemory
 cd OpenMemory
 cp .env.example .env
 docker compose up -d
-# → listening on http://localhost:4242/mcp
+# → listening on http://0.0.0.0:4242/mcp
 ```
 
 The default compose file starts a single `openmemory` service using BM25-only search (no embedding API required). Edit `.env` to switch providers - see [Embedding Providers](#embedding-providers) below.
@@ -94,7 +94,7 @@ docker compose up -d
 
 Then set `OPENMEMORY_EMBEDDING__PROVIDER=local` in your `.env`.
 
-### pip
+### Option 2 - pip
 
 For development or direct integration without Docker:
 
