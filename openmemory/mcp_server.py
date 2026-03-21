@@ -84,8 +84,11 @@ def memory_write(
       govern *how the agent operates* in future sessions (e.g. "always search
       memory before answering", "prefer bullet points over prose").
 
-      Ensure that the memory you are trying to write does not already exist in 
-      the target tier using the memory_search tool before writing.
+    Before writing to "long_term", "user", or "agent" tiers, call memory_search
+    with top_k=1 to check whether a closely related fact is already stored in
+    that tier. If a near-duplicate exists, prefer memory_replace_text or
+    memory_replace_lines to update the existing entry rather than appending a
+    new one.
 
     Args:
         content: The text to store. Be concise and specific.

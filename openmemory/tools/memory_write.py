@@ -19,7 +19,11 @@ SCHEMA = {
         "  'long_term' — curated facts, decisions, and preferences that should persist forever (MEMORY.md).\n"
         "  'daily'     — running notes, task progress, and session context (daily log, date-stamped).\n"
         "  'user'      — stable facts about the user: name, role, location, preferences (USER.md).\n"
-        "  'agent'     — instructions or rules that should govern future agent behaviour (AGENTS.md)."
+        "  'agent'     — instructions or rules that should govern future agent behaviour (AGENTS.md).\n\n"
+        "Before writing to 'long_term', 'user', or 'agent' tiers, call memory_search with top_k=1 "
+        "to check whether a closely related fact is already stored in that tier. "
+        "If a near-duplicate exists, prefer memory_replace_text or memory_replace_lines to update "
+        "the existing entry rather than appending a new one."
     ),
     "parameters": {
         "type": "object",
