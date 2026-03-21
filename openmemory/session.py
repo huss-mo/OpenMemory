@@ -65,7 +65,7 @@ class MemorySession:
         if config is None:
             config = OpenMemoryConfig()
 
-        workspace = Workspace(config.workspace_path / workspace_name)
+        workspace = Workspace(config.root_dir / workspace_name)
         index = MemoryIndex(workspace.db_path)
         provider = make_provider(config.embedding)
 

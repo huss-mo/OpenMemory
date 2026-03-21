@@ -38,6 +38,7 @@ For a project overview and quick start, see [README.md](README.md).
       - [11. Tools (`openmemory/tools/`)](#11-tools-openmemorytools)
       - [12. LLM Adapters (`openmemory/adapters/`)](#12-llm-adapters-openmemoryadapters)
       - [13. Session (`openmemory/session.py`)](#13-session-openmemorysessionpy)
+      - [13 (note). Session vs Workspace - not two different things](#13-note-session-vs-workspace---not-two-different-things)
   - [Data Flow](#data-flow)
   - [Tech Stack](#tech-stack)
   - [Configuration](#configuration)
@@ -251,7 +252,7 @@ OpenMemory's memory context (long-term facts, user profile, agent instructions, 
 
 **Tool-based bootstrap (all clients)**
 
-The `memory_bootstrap` tool description is written so that most agents call it automatically at the start of a session without any explicit instruction — the tool's description alone signals that it should be the first action taken. **No system-prompt changes are necessary in most cases.**
+The `memory_bootstrap` tool description is written so that most agents call it automatically at the start of a session without any explicit instruction - the tool's description alone signals that it should be the first action taken. **No system-prompt changes are necessary in most cases.**
 
 If you find that your agent does not call `memory_bootstrap` on its own, you can add an explicit fallback instruction to the system prompt:
 
@@ -399,8 +400,8 @@ Use `session.execute_tool(name, **kwargs)` to call tools programmatically, or pa
 
 | Value | Written to | Behaviour |
 |---|---|---|
-| `long_term` | `MEMORY.md` | Appended permanently; survives all sessions. **Immutable** — append only. |
-| `daily` | `daily/YYYY-MM-DD.md` | Appended to today's date-stamped log. **Immutable** — append only. |
+| `long_term` | `MEMORY.md` | Appended permanently; survives all sessions. **Immutable** - append only. |
+| `daily` | `daily/YYYY-MM-DD.md` | Appended to today's date-stamped log. **Immutable** - append only. |
 | `user` | `USER.md` | Updates the stable user profile. Mutable. |
 | `agent` | `AGENTS.md` | Updates agent operating instructions. Mutable. |
 
@@ -422,18 +423,21 @@ Use `session.execute_tool(name, **kwargs)` to call tools programmatically, or pa
 ### Architectural Layers
 
 #### 1. Workspace (`openmemory/core/workspace.py`)
-Manages the filesystem layout for a single memory workspace. On first use it creates the directory tree and seeds default Markdown files. All other layers receive a `Workspace` object to resolve file paths.
+`Workspace` is a pure filesystem abstraction for a single memory workspace. On first use it creates the directory tree and seeds the default Markdown files (`MEMORY.md`, `USER.md`, `AGENTS.md`, `RELATIONS.md`). All other layers receive a `Workspace` object to resolve file paths - it never holds runtime state such as a database connection or embedding provider.
+
+The on-disk layout is a **single directory level** under `~/.openmemory`:
 
 ```
-<workspace_path>/
-├── MEMORY.md        long-term curated memory (written by memory_write tier="long_term")
-├── USER.md          stable user profile (edited manually or by the agent)
-├── AGENTS.md        agent operating instructions (seeded with sensible defaults)
-├── RELATIONS.md     human-readable mirror of the entity relation graph
-├── daily/
-│   └── YYYY-MM-DD.md   append-only daily logs (written by memory_write tier="daily")
-└── .index/
-    └── memory.db    SQLite index (chunks + FTS5 + relations + embedding cache)
+~/.openmemory/
+└── <workspace_name>/          ← one directory per named workspace
+    ├── MEMORY.md              long-term curated memory
+    ├── USER.md                stable user profile
+    ├── AGENTS.md              agent operating instructions
+    ├── RELATIONS.md           human-readable entity relation graph
+    ├── daily/
+    │   └── YYYY-MM-DD.md     append-only daily logs
+    └── .index/
+        └── memory.db          SQLite index (chunks + FTS5 + relations + embeddings)
 ```
 
 #### 2. Memory Storage (`openmemory/core/storage.py`)
@@ -476,8 +480,8 @@ Seven-step pipeline:
 
 #### 7. Relation Graph (`openmemory/core/relations.py`)
 Single consolidated module for all relation logic. Stores typed entity triples (`subject → predicate → object`) in two places simultaneously:
-- **SQLite** `relations` table — fast structured lookup used by graph expansion during search.
-- **`RELATIONS.md`** — human-readable, editable mirror, injected at bootstrap.
+- **SQLite** `relations` table - fast structured lookup used by graph expansion during search.
+- **`RELATIONS.md`** - human-readable, editable mirror, injected at bootstrap.
 
 **Source-of-truth model:** `RELATIONS.md` is the authoritative record. Any change to the file is automatically reconciled back into SQLite.
 
@@ -533,7 +537,7 @@ Eight JSON-schema-described tools exposed to the LLM via function calling:
 |---|---|
 | `ok(data)` / `err(msg)` | Wrap a successful or error tool result |
 | `is_immutable(file)` | Return `True` for `MEMORY.md` and `daily/*.md` |
-| `sync_after_edit(session, resolved, is_relations, base_payload)` | Re-index a file after an in-place edit and return `ok(payload)`. Calls `sync_file` (and, when `is_relations=True`, `sync_relations_from_file`) non-fatally — sync failures add a `warning` key rather than raising. Used by `memory_delete`, `memory_replace_text`, and `memory_replace_lines` to eliminate the duplicated re-index block that each function would otherwise carry. |
+| `sync_after_edit(session, resolved, is_relations, base_payload)` | Re-index a file after an in-place edit and return `ok(payload)`. Calls `sync_file` (and, when `is_relations=True`, `sync_relations_from_file`) non-fatally - sync failures add a `warning` key rather than raising. Used by `memory_delete`, `memory_replace_text`, and `memory_replace_lines` to eliminate the duplicated re-index block that each function would otherwise carry. |
 
 #### 12. LLM Adapters (`openmemory/adapters/`)
 Thin schema-conversion + agentic-loop helpers:
@@ -542,6 +546,9 @@ Thin schema-conversion + agentic-loop helpers:
 
 #### 13. Session (`openmemory/session.py`)
 `MemorySession` is the composition root that holds references to `Workspace`, `MemoryIndex`, and `EmbeddingProvider`. It exposes `execute_tool`, `bootstrap`, `sync`, `should_compact`, and `compaction_prompts` as the primary API surface.
+
+#### 13 (note). Session vs Workspace - not two different things
+`MemorySession` **is** the workspace session - there is no meaningful distinction between the two concepts in OpenMemory. `Workspace` is the low-level filesystem handle; `MemorySession` is the high-level runtime object that wraps it together with the index and embedding provider. When you call `MemorySession.create("my-project")`, it resolves the path as `~/.openmemory/my-project` - a single directory, not a nested one.
 
 ---
 

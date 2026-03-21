@@ -24,6 +24,9 @@ def _get_session():
 
         cfg = OpenMemoryConfig.auto()
         _session = MemorySession.create(cfg.workspace, config=cfg)
+        # cfg.workspace is the logical workspace name (e.g. "default").
+        # MemorySession.create() resolves the full path as cfg.root_dir / workspace_name,
+        # so the data directory is always a single level: ~/.openmemory/<workspace>.
         atexit.register(_session.close)
     return _session
 
