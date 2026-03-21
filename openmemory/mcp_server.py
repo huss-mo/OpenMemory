@@ -1,4 +1,4 @@
-"""OpenMemory MCP server — exposes all 6 memory tools over HTTP (streamable-http transport)."""
+"""OpenMemory MCP server — exposes all memory tools over HTTP (streamable-http transport)."""
 from __future__ import annotations
 
 import atexit
@@ -154,12 +154,19 @@ def memory_delete(
     end_line: int,
     reason: str = "deleted by agent",
 ) -> str:
-    """Delete a range of lines from a workspace memory file.
+    """Delete a range of lines from a mutable memory file (tombstone-style).
+
+    MEMORY.md and daily/*.md are append-only history and cannot be modified.
+    Only USER.md, AGENTS.md, and RELATIONS.md are editable.
+
+    The deleted content is replaced by an HTML audit comment so the change
+    is always reversible by a human.
 
     Args:
-        file: Workspace-relative file path containing the memory to delete.
-        start_line: 0-indexed first line to delete (inclusive).
-        end_line: 0-indexed last line to delete (exclusive).
+        file: Workspace-relative path of the mutable file to edit (e.g. "USER.md").
+        start_line: 1-based line number of the first line to delete.
+        end_line: 1-based line number of the last line to delete (inclusive).
+                  Pass the same value as start_line to delete a single line.
         reason: Human-readable reason recorded in the tombstone comment.
     """
     return _unwrap(
@@ -204,6 +211,68 @@ def memory_relate(
             note=note,
             source_file=source_file,
             confidence=confidence,
+        )
+    )
+
+
+@mcp.tool()
+def memory_replace_text(
+    file: str,
+    search: str,
+    replacement: str,
+) -> str:
+    """Replace the first exact-string match in a mutable memory file.
+
+    MEMORY.md and daily/*.md are append-only history and cannot be modified.
+    Only USER.md, AGENTS.md, and RELATIONS.md are editable.
+
+    Use memory_get first to read the file and confirm the exact text to
+    replace (including whitespace and newlines).
+
+    Args:
+        file: Workspace-relative path of the mutable file to edit (e.g. "USER.md").
+        search: Exact string to search for. Must match character-for-character.
+                Only the first occurrence is replaced.
+        replacement: Text to substitute in place of the matched string.
+    """
+    return _unwrap(
+        _get_session().execute_tool(
+            "memory_replace_text",
+            file=file,
+            search=search,
+            replacement=replacement,
+        )
+    )
+
+
+@mcp.tool()
+def memory_replace_lines(
+    file: str,
+    start_line: int,
+    end_line: int,
+    replacement: str,
+) -> str:
+    """Replace a line range in a mutable memory file with new text.
+
+    MEMORY.md and daily/*.md are append-only history and cannot be modified.
+    Only USER.md, AGENTS.md, and RELATIONS.md are editable.
+
+    Use memory_get first to identify the target line numbers.
+
+    Args:
+        file: Workspace-relative path of the mutable file to edit (e.g. "USER.md").
+        start_line: 1-based line number of the first line to replace.
+        end_line: 1-based line number of the last line to replace (inclusive).
+                  Pass the same value as start_line to replace a single line.
+        replacement: Text that replaces the specified line range.
+    """
+    return _unwrap(
+        _get_session().execute_tool(
+            "memory_replace_lines",
+            file=file,
+            start_line=start_line,
+            end_line=end_line,
+            replacement=replacement,
         )
     )
 
