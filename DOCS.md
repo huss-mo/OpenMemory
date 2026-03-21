@@ -517,7 +517,7 @@ Eight JSON-schema-described tools exposed to the LLM via function calling:
 | `memory_delete` | Mutable files only | Tombstone-style deletion (1-indexed); re-indexes. Rejected on `MEMORY.md`/`daily/*.md`. When file is `RELATIONS.md`, also deletes the corresponding SQLite relation rows via `parse_relations_from_text`. |
 | `memory_replace_text` | Mutable files only | Replaces first exact string match in-place; re-indexes. Rejected on `MEMORY.md`/`daily/*.md`. When file is `RELATIONS.md`, validates replacement format via `validate_relations_replacement` and reconciles SQLite. |
 | `memory_replace_lines` | Mutable files only | Replaces a 1-indexed inclusive line range in-place; re-indexes. Rejected on `MEMORY.md`/`daily/*.md`. When file is `RELATIONS.md`, validates replacement format via `validate_relations_replacement` and reconciles SQLite. |
-| `memory_relate` | `RELATIONS.md` + SQLite | Semantic dedup before insert |
+| `memory_relate` | `RELATIONS.md` + SQLite | Semantic dedup before insert. Pass `supersedes=True` to replace all prior `(subject, predicate)` triples (e.g. job change, relocation). |
 
 **Shared utilities (`openmemory/tools/base.py`):**
 

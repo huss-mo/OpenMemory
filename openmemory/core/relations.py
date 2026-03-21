@@ -9,7 +9,7 @@ Format in RELATIONS.md:
   - [Alice] --leads--> [Auth Team] (2026-03-20) — "Added during sprint planning"
 
 Public API (used by tools, sync, session):
-  add_relation(...)                 — write a relation to both stores (with dedup)
+  add_relation(...)                 — write a relation to both stores (with dedup / supersede)
   get_relations(...)                — read relations from SQLite
   parse_relations_from_text(…)      — parse valid relation lines from a text string
   parse_relations_from_file(…)      — parse valid lines from RELATIONS.md
@@ -123,6 +123,46 @@ def _find_semantic_duplicate(
 # Write / read API
 # ---------------------------------------------------------------------------
 
+def _delete_relations_by_subject_predicate(
+    index: MemoryIndex,
+    relations_file: Path,
+    subject: str,
+    predicate: str,
+) -> list[dict]:
+    """
+    Delete all SQLite rows and RELATIONS.md lines for *(subject, predicate)*.
+
+    Returns the list of deleted relation dicts so the caller can report them.
+    """
+    # Find matching rows in SQLite
+    all_rows = index.get_all_relations()
+    to_delete = [
+        row for row in all_rows
+        if row["subject"].lower() == subject.lower()
+        and row["predicate"].lower() == predicate.lower()
+    ]
+
+    # Delete from SQLite
+    for row in to_delete:
+        index.delete_relation(row["id"])
+
+    # Remove matching lines from RELATIONS.md
+    if to_delete and relations_file.exists():
+        lines = relations_file.read_text(encoding="utf-8").splitlines(keepends=True)
+        kept: list[str] = []
+        for line in lines:
+            m = RELATION_LINE_RE.match(line)
+            if m:
+                line_subj = m.group(1).strip().lower()
+                line_pred = m.group(2).strip().lower()
+                if line_subj == subject.lower() and line_pred == predicate.lower():
+                    continue  # drop this line
+            kept.append(line)
+        _atomic_write(relations_file, "".join(kept))
+
+    return [dict(r) for r in to_delete]
+
+
 def add_relation(
     index: MemoryIndex,
     relations_file: Path,
@@ -133,6 +173,7 @@ def add_relation(
     confidence: float = 1.0,
     provider: Optional["EmbeddingProvider"] = None,
     dedup_threshold: float = 0.92,
+    supersedes: bool = False,
 ) -> dict:
     """
     Record a named relationship between two entities.
@@ -142,6 +183,10 @@ def add_relation(
     - When *provider* is supplied (and not NullEmbeddingProvider), performs
       semantic deduplication: if an existing relation is cosine-similar above
       *dedup_threshold* the new triple is skipped and the existing one returned.
+    - When *supersedes* is ``True``, all existing ``(subject, predicate)``
+      triples are deleted from both SQLite and RELATIONS.md before the new
+      triple is inserted.  Use this when the new relation *replaces* a prior
+      one (e.g. job change, relocation) rather than adding to a set.
 
     Returns a dict describing what was written (or the duplicate if deduped).
     """
@@ -149,8 +194,16 @@ def add_relation(
     predicate = predicate.strip()
     object_ = object_.strip()
 
+    # --- Supersede: remove all prior (subject, predicate) triples first ---
+    superseded: list[dict] = []
+    if supersedes:
+        superseded = _delete_relations_by_subject_predicate(
+            index, relations_file, subject, predicate
+        )
+
     # --- Semantic deduplication (only when a real provider is available) ---
-    if provider is not None:
+    # Skip dedup when superseding — we explicitly want to replace old triples.
+    if not supersedes and provider is not None:
         duplicate = _find_semantic_duplicate(
             index, provider, subject, predicate, object_, dedup_threshold
         )
@@ -187,7 +240,7 @@ def add_relation(
         new_content = existing.rstrip() + "\n" + line + "\n"
         _atomic_write(relations_file, new_content)
 
-    return {
+    result = {
         "id": relation_id,
         "subject": subject,
         "predicate": predicate,
@@ -196,6 +249,12 @@ def add_relation(
         "written_to": str(relations_file),
         "deduplicated": False,
     }
+    if superseded:
+        result["superseded"] = [
+            {"subject": r["subject"], "predicate": r["predicate"], "object": r["object"]}
+            for r in superseded
+        ]
+    return result
 
 
 def get_relations(index: MemoryIndex, entity: Optional[str] = None) -> list[dict]:

@@ -284,3 +284,153 @@ class TestSemanticDedup:
 
         # Zero vector → similarity 0.0 (no division by zero)
         assert _cosine_similarity([0.0, 0.0], [1.0, 0.0]) == pytest.approx(0.0)
+
+
+# ---------------------------------------------------------------------------
+# Supersede tests
+# ---------------------------------------------------------------------------
+
+class TestMemoryRelateSupersedes:
+    def test_supersedes_removes_old_sqlite_row(self, session):
+        """supersedes=True should delete old (subject, predicate) rows from SQLite."""
+        session.execute_tool(
+            "memory_relate", subject="Hussein", predicate="works_at", object="iHorizons"
+        )
+        assert len(session.index.get_all_relations()) == 1
+
+        session.execute_tool(
+            "memory_relate",
+            subject="Hussein",
+            predicate="works_at",
+            object="One Industry",
+            supersedes=True,
+        )
+        rows = session.index.get_all_relations()
+        assert len(rows) == 1
+        assert rows[0]["object"] == "One Industry"
+
+    def test_supersedes_removes_old_line_from_file(self, session):
+        """supersedes=True should remove old lines from RELATIONS.md."""
+        session.execute_tool(
+            "memory_relate", subject="Hussein", predicate="works_at", object="iHorizons"
+        )
+        session.execute_tool(
+            "memory_relate",
+            subject="Hussein",
+            predicate="works_at",
+            object="One Industry",
+            supersedes=True,
+        )
+        get = session.execute_tool("memory_get", file="RELATIONS.md")
+        content = get["content"]
+        assert "iHorizons" not in content
+        assert "One Industry" in content
+
+    def test_supersedes_response_includes_superseded_list(self, session):
+        """The tool response should include a 'superseded' key listing what was removed."""
+        session.execute_tool(
+            "memory_relate", subject="Alice", predicate="lives_in", object="Cairo"
+        )
+        r = session.execute_tool(
+            "memory_relate",
+            subject="Alice",
+            predicate="lives_in",
+            object="Berlin",
+            supersedes=True,
+        )
+        assert r["status"] == "ok"
+        assert "superseded" in r
+        assert len(r["superseded"]) == 1
+        assert r["superseded"][0]["object"] == "Cairo"
+
+    def test_supersedes_multiple_old_relations_all_removed(self, session):
+        """If multiple prior (subject, predicate) triples exist, all are removed."""
+        # Manually insert two rows with the same (subject, predicate)
+        from openmemory.core import relations as _r
+        ws = session.workspace
+        _r.add_relation(
+            session.index, ws.relations_file,
+            "Bob", "member_of", "Team A",
+        )
+        _r.add_relation(
+            session.index, ws.relations_file,
+            "Bob", "member_of", "Team B",
+        )
+        assert len(session.index.get_all_relations()) == 2
+
+        r = session.execute_tool(
+            "memory_relate",
+            subject="Bob",
+            predicate="member_of",
+            object="Team C",
+            supersedes=True,
+        )
+        rows = session.index.get_all_relations()
+        assert len(rows) == 1
+        assert rows[0]["object"] == "Team C"
+        assert len(r["superseded"]) == 2
+
+    def test_supersedes_false_keeps_existing_relations(self, session):
+        """Without supersedes=True, existing (subject, predicate) triples are kept."""
+        session.execute_tool(
+            "memory_relate", subject="Carol", predicate="knows", object="Dave"
+        )
+        session.execute_tool(
+            "memory_relate", subject="Carol", predicate="knows", object="Eve"
+        )
+        rows = session.index.get_all_relations()
+        assert len(rows) == 2
+
+    def test_supersedes_only_affects_matching_predicate(self, session):
+        """supersedes=True only removes triples with the exact same predicate."""
+        session.execute_tool(
+            "memory_relate", subject="Dave", predicate="works_at", object="Acme"
+        )
+        session.execute_tool(
+            "memory_relate", subject="Dave", predicate="lives_in", object="Cairo"
+        )
+        session.execute_tool(
+            "memory_relate",
+            subject="Dave",
+            predicate="works_at",
+            object="Globex",
+            supersedes=True,
+        )
+        rows = session.index.get_all_relations()
+        # lives_in should still be there
+        predicates = {r["predicate"] for r in rows}
+        assert "lives_in" in predicates
+        assert len(rows) == 2  # works_at (new) + lives_in
+
+    def test_supersedes_with_no_prior_relation_is_noop(self, session):
+        """supersedes=True with no existing triples just writes normally."""
+        r = session.execute_tool(
+            "memory_relate",
+            subject="Eve",
+            predicate="works_at",
+            object="Initech",
+            supersedes=True,
+        )
+        assert r["status"] == "ok"
+        assert "superseded" not in r  # nothing was deleted
+        rows = session.index.get_all_relations()
+        assert len(rows) == 1
+
+    def test_supersedes_case_insensitive_subject_and_predicate(self, session):
+        """Subject and predicate matching is case-insensitive."""
+        session.execute_tool(
+            "memory_relate", subject="Frank", predicate="works_at", object="OldCo"
+        )
+        r = session.execute_tool(
+            "memory_relate",
+            subject="frank",  # different case
+            predicate="WORKS_AT",  # different case
+            object="NewCo",
+            supersedes=True,
+        )
+        assert r["status"] == "ok"
+        # The old row should be gone
+        rows = session.index.get_all_relations()
+        objects = {row["object"] for row in rows}
+        assert "OldCo" not in objects
+        assert "NewCo" in objects

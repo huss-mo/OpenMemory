@@ -58,6 +58,23 @@ When to relate vs. write:
 - Structural fact about people, teams, or systems → `memory_relate`
 - Free-form preference, decision, or note → `memory_write`
 
+#### Superseding outdated relations
+
+When a relation changes (job change, location change, team reassignment), use `supersedes=True` to replace the old value instead of accumulating duplicates:
+
+```
+# User changed jobs — old works_at should be removed
+memory_relate(subject="Hussein", predicate="works_at", object="One Industry", supersedes=True, note="Previously at iHorizons")
+
+# User moved cities
+memory_relate(subject="Alice", predicate="lives_in", object="Berlin", supersedes=True)
+```
+
+**Rules:**
+- Use `supersedes=True` only when the old value is no longer valid — it deletes ALL prior `(subject, predicate)` triples.
+- Do NOT use `supersedes=True` when multiple objects are valid at the same time (e.g. `knows`, `attended`, `member_of`).
+- Before writing any relation, call `memory_search` to check if a conflicting one already exists.
+
 ### Editing RELATIONS.md directly
 
 You may read and edit RELATIONS.md using `memory_get`, `memory_replace_text`, `memory_replace_lines`, and `memory_delete`. **Every non-blank, non-header line must follow this exact format:**
