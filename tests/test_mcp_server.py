@@ -391,6 +391,16 @@ class TestMcpMemoryRelate:
         args = mock_session.execute_tool.call_args
         assert args.kwargs["confidence"] == 0.75
 
+    def test_relate_default_supersedes_is_false(self, mock_session):
+        mcp_mod.memory_relate(subject="A", predicate="knows", object="B")
+        args = mock_session.execute_tool.call_args
+        assert args.kwargs["supersedes"] is False
+
+    def test_relate_supersedes_true_forwarded(self, mock_session):
+        mcp_mod.memory_relate(subject="A", predicate="knows", object="B", supersedes=True)
+        args = mock_session.execute_tool.call_args
+        assert args.kwargs["supersedes"] is True
+
     def test_relate_error_propagates(self, mock_session):
         mock_session.execute_tool.return_value = _err("dedup rejected triple")
         with pytest.raises(ValueError, match="dedup rejected triple"):
