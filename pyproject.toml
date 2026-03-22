@@ -36,6 +36,10 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["openmemory"]
+artifacts = [
+    "openmemory/config/openmemory.yaml.example",
+    "openmemory/config/.env.example",
+]
 
 [tool.ruff]
 line-length = 100

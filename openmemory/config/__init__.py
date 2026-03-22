@@ -57,6 +57,34 @@ def _env_file_paths() -> tuple[str, str]:
     return (str(root / ".env"), ".env")
 
 
+def _seed_example_config() -> None:
+    """Copy the bundled example config files into root_dir on first run.
+
+    Copies both ``openmemory.yaml.example`` and ``.env.example`` from the
+    ``openmemory.config`` package into ``$OPENMEMORY_ROOT_DIR/`` the first
+    time ``openmemory-mcp`` starts.  Each file is only written when it does
+    not already exist, so subsequent runs are a no-op.
+
+    Uses ``importlib.resources`` so it works for both wheel installs
+    (``pip install openmemory``) and editable installs (``pip install -e .``).
+    """
+    import importlib.resources as pkg_resources
+
+    root = _get_root_dir()
+    try:
+        root.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        return  # Non-fatal — can't create root dir
+
+    dest = root / "openmemory.yaml.example"
+    if not dest.exists():
+        try:
+            ref = pkg_resources.files("openmemory.config").joinpath("openmemory.yaml.example")
+            dest.write_bytes(ref.read_bytes())
+        except Exception:
+            pass  # Non-fatal — missing example file should never crash the server
+
+
 def _load_yaml_config(filename: str = "openmemory.yaml") -> dict[str, Any]:
     """Search for *filename* in root_dir then cwd; return parsed dict or {}.
 

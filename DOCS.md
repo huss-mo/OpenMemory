@@ -57,7 +57,7 @@ Docker is the recommended way to run OpenMemory. It requires no Python environme
 ```bash
 git clone https://github.com/huss-mo/OpenMemory
 cd OpenMemory
-cp .env.example .env
+cp openmemory/config/.env.example .env
 docker compose up -d
 # → listening on http://0.0.0.0:4242/mcp
 ```
@@ -135,6 +135,14 @@ OpenMemory reads config from `~/.openmemory/` - the same directory where workspa
 ```
 
 Both `.env` and `openmemory.yaml` are optional - use whichever format you prefer (or neither, and set env vars directly). Environment variables always take priority over config files.
+
+On first run, `openmemory-mcp` automatically copies an annotated example config into `~/.openmemory/openmemory.yaml.example` - the full YAML reference with every option documented. You can also find it in the repository at `openmemory/config/openmemory.yaml.example`.
+
+For environment-variable style config, copy the bundled example manually:
+
+```bash
+cp openmemory/config/.env.example ~/.openmemory/.env
+```
 
 **A cwd-level config file (`./openmemory.yaml` or `./.env`) is also checked** as a fallback, which is useful for per-project overrides in dev mode.
 
@@ -651,6 +659,15 @@ Next session: session.bootstrap() reloads persisted facts
 ### Minimum Config
 
 No configuration file is required. With no config, OpenMemory uses BM25-only search backed by SQLite - no API key, no GPU, no extra packages.
+
+**Finding the example config files**
+
+Both example files are bundled with the package under `openmemory/config/` in the repository:
+
+- `openmemory/config/openmemory.yaml.example` - full YAML reference with every option documented
+- `openmemory/config/.env.example` - all environment variables with descriptions and defaults
+
+For **pip installs**, `openmemory-mcp` automatically copies `openmemory.yaml.example` into `~/.openmemory/` on first run. For **Docker installs**, copy the `.env.example` manually as shown in the [Docker quick-start](#option-1---docker) above.
 
 ### openmemory.yaml Reference
 

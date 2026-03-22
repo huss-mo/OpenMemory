@@ -1,11 +1,16 @@
 # OpenMemory — YAML Configuration Reference
-# Copy this file to openmemory.yaml (in your project root or cwd) and edit as needed.
+# Copy this file to openmemory.yaml in your config directory and edit as needed.
+#
+# Config file locations (first match wins):
+#   ~/.openmemory/openmemory.yaml   ← pip / editable installs (recommended)
+#   ./data/openmemory.yaml          ← Docker (host path, mounted at /data)
+#   ./openmemory.yaml               ← cwd override / dev mode
 #
 # Priority order (highest wins):
 #   1. Constructor kwargs (programmatic)
 #   2. Environment variables  (OPENMEMORY_* with __ nesting)
-#   3. .env file
-#   4. openmemory.yaml        ← this file
+#   3. $OPENMEMORY_ROOT_DIR/.env or ./.env
+#   4. $OPENMEMORY_ROOT_DIR/openmemory.yaml or ./openmemory.yaml  ← this file
 #   5. Built-in defaults
 #
 # Usage in code:
@@ -29,12 +34,13 @@
 # ---------------------------------------------------------------------------
 embedding:
   # provider options:
-  #   "local"  — sentence-transformers (requires: uv sync --extra local)
-  #   "openai" — OpenAI-compatible HTTP API
-  #   "none"   — BM25 keyword search only (no vector search, no GPU needed)
+  #   "none"   — BM25 keyword search only (no vector search, no GPU needed) [default]
+  #   "openai" — OpenAI-compatible HTTP API (no extra install required)
+  #   "local"  — sentence-transformers (requires: pip install openmemory[local])
   provider: none
 
   # --- sentence-transformers (provider: local) ---
+  # Requires: pip install openmemory[local]  (not installed by default)
   # Any model from https://www.sbert.net/docs/pretrained_models.html
   # local_model: all-MiniLM-L6-v2      # fast, 384-dim, good quality
   # local_model: all-mpnet-base-v2     # slower, 768-dim, higher quality

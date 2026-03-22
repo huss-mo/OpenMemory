@@ -354,6 +354,9 @@ def memory_bootstrap_prompt() -> str:
 def main() -> None:
     import uvicorn
 
+    from openmemory.config import _seed_example_config
+
+    _seed_example_config()
     cfg = OpenMemoryConfig.auto()
     app = mcp.streamable_http_app()
     uvicorn.run(app, host=cfg.mcp.host, port=cfg.mcp.port, forwarded_allow_ips="*")
