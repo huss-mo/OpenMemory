@@ -100,18 +100,11 @@ Then set `OPENMEMORY_EMBEDDING__PROVIDER=local` in your `.env`.
 For development or direct integration without Docker:
 
 ```bash
-git clone https://github.com/huss-mo/OpenMemory
-cd OpenMemory
-
 # BM25-only - no extra dependencies
-pip install -e .
+pip install openmemory-ai
 
 # With local sentence-transformers embeddings
-pip install -e ".[local]"
-
-# Or with uv
-uv sync
-uv sync --extra local   # for sentence-transformers support
+pip install "openmemory-ai[local]"
 ```
 
 Then start the MCP server:
@@ -154,7 +147,7 @@ OpenMemory supports three embedding providers. You can switch between them at an
 |---|---|---|---|
 | BM25-only | `none` | No | Default. Pure keyword search via SQLite FTS5. Works offline, no API key needed. |
 | OpenAI-compatible API | `openai` | No | Any HTTP embedding API: OpenAI, Ollama, LM Studio, LiteLLM, vLLM, Mistral, etc. Requires `OPENMEMORY_EMBEDDING__BASE_URL` and `OPENMEMORY_EMBEDDING__API_KEY`. |
-| Local sentence-transformers | `local` | Yes - `pip install -e ".[local]"` or `--build-arg EXTRAS=local` for Docker | Fully offline vector embeddings. Downloads model on first run. |
+| Local sentence-transformers | `local` | Yes - `pip install "openmemory-ai[local]"` or `--build-arg EXTRAS=local` for Docker | Fully offline vector embeddings. Downloads model on first run. |
 
 **`none` - BM25-only (default)**
 
@@ -196,7 +189,7 @@ Runs a local embedding model entirely on your machine - no network call, no API 
 
 ```bash
 # Install the extra first
-pip install -e ".[local]"
+pip install "openmemory-ai[local]"
 
 OPENMEMORY_EMBEDDING__PROVIDER=local \
 OPENMEMORY_EMBEDDING__LOCAL_MODEL=all-MiniLM-L6-v2 \
@@ -471,11 +464,13 @@ Splits Markdown files into overlapping chunks that respect heading boundaries. E
 #### 4. Embedding Providers (`openmemory/core/embeddings.py`)
 Abstract `EmbeddingProvider` with three concrete implementations:
 
-| Provider | Class | Extra install | When to use |
-|---|---|---|---|
-| `none` | `NullEmbeddingProvider` | None | Zero-dep BM25-only mode - returns empty vectors; no API key or GPU needed |
-| `openai` | `OpenAICompatibleProvider` | None (`httpx` is a core dep) | Any OpenAI-compatible HTTP endpoint (OpenAI, Ollama, LM Studio, LiteLLM, …) |
-| `local` | `SentenceTransformerProvider` | `pip install -e ".[local]"` | Fully offline embeddings via `sentence-transformers`; model downloaded on first run |
+| Provider | Class | Notes |
+|---|---|---|
+| `none` | `NullEmbeddingProvider` | Returns empty vectors; BM25-only path, no network or GPU |
+| `openai` | `OpenAICompatibleProvider` | HTTP calls via `httpx`; works with any OpenAI-compatible endpoint |
+| `local` | `SentenceTransformerProvider` | Runs a local model in-process via `sentence-transformers` |
+
+For provider configuration, install commands, and usage examples, see [Embedding Providers](#embedding-providers).
 
 #### 5. Memory Index (`openmemory/core/index.py`)
 SQLite database (`memory.db`) with five tables:
@@ -700,11 +695,11 @@ embedding:
   # provider options:
   #   "none"   - BM25-only, no extra deps, no API key needed (default)
   #   "openai" - any OpenAI-compatible HTTP endpoint, no extra deps needed
-  #   "local"  - sentence-transformers (install with: pip install -e ".[local]")
+  #   "local"  - sentence-transformers (install with: pip install "openmemory-ai[local]")
   provider: none
 
   # --- sentence-transformers (provider: local) ---
-  # Requires: pip install -e ".[local]"  (not installed by default)
+  # Requires: pip install "openmemory-ai[local]"  (not installed by default)
   # Any model from https://www.sbert.net/docs/pretrained_models.html
   # local_model: all-MiniLM-L6-v2      # fast, 384-dim, good general quality
   # local_model: all-mpnet-base-v2     # slower, 768-dim, higher quality

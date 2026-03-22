@@ -1,4 +1,4 @@
-<img src="./_assets/icon.png" alt="om logo" width="140"> 
+<img src="https://raw.githubusercontent.com/huss-mo/OpenMemory/master/_assets/icon.png" alt="om logo" width="140">
 
 # OpenMemory
 
@@ -26,9 +26,7 @@ docker compose up -d
 ### Option 2 - pip
 
 ```bash
-git clone https://github.com/huss-mo/OpenMemory && cd OpenMemory
-pip install -e .
-openmemory-mcp
+pip install openmemory-ai && openmemory-mcp
 # → listening on http://0.0.0.0:4242/mcp
 ```
 

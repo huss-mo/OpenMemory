@@ -1,7 +1,7 @@
 [project]
 name = "openmemory-ai"
-version = "0.2.1"
-description = "A persistent, semantic memory system for AI agents"
+version = "0.2.2"
+description = "Persistent, semantic memory for AI agents - local-first, framework-agnostic, production-ready"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -15,6 +15,11 @@ dependencies = [
     "mcp[cli]>=1.6",
     "uvicorn>=0.29",
 ]
+
+[project.urls]
+Repository = "https://github.com/huss-mo/OpenMemory"
+Issues = "https://github.com/huss-mo/OpenMemory/issues"
+Documentation = "https://github.com/huss-mo/OpenMemory/blob/master/DOCS.md"
 
 [project.optional-dependencies]
 local = [
