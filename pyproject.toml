@@ -1,6 +1,6 @@
 [project]
 name = "openmemory-ai"
-version = "0.2.2"
+version = "0.2.3"
 description = "Persistent, semantic memory for AI agents - local-first, framework-agnostic, production-ready"
 readme = "README.md"
 requires-python = ">=3.10"
