@@ -57,7 +57,7 @@ Docker is the recommended way to run GroundMemory. It requires no Python environ
 
 ```bash
 git clone https://github.com/huss-mo/GroundMemory && cd GroundMemory
-cp GroundMemory/config/.env.example .env
+cp groundmemory/config/.env.example .env
 docker compose up -d
 # → listening on http://127.0.0.1:4242/mcp
 ```
@@ -690,10 +690,10 @@ No configuration file is required. With no config, GroundMemory uses BM25-only s
 
 **Finding the example config files**
 
-Both example files are bundled with the package under `GroundMemory/config/` in the repository:
+Both example files are bundled with the package under `groundmemory/config/` in the repository:
 
-- `GroundMemory/config/groundmemory.yaml.example` - full YAML reference with every option documented
-- `GroundMemory/config/.env.example` - all environment variables with descriptions and defaults
+- `groundmemory/config/groundmemory.yaml.example` - full YAML reference with every option documented
+- `groundmemory/config/.env.example` - all environment variables with descriptions and defaults
 
 For **pip installs**, `groundmemory-mcp` automatically copies `groundmemory.yaml.example` into `~/.groundmemory/` on first run. For **Docker installs**, copy the `.env.example` manually as shown in the [Docker quick-start](#option-1---docker) above.
 
