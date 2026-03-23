@@ -211,10 +211,21 @@ class Workspace:
     def resolve_file(self, name: str) -> Path:
         """
         Resolve a user-supplied filename to an absolute path within the workspace.
-        Accepts bare names like 'MEMORY.md', 'daily/2026-03-20.md', or full paths.
+        Accepts bare names like 'MEMORY.md' or 'daily/2026-03-20.md'.
+
+        Raises ValueError if:
+        - the supplied path is absolute (no legitimate tool call needs this), or
+        - the resolved path escapes the workspace directory (path traversal).
         """
         p = Path(name)
         if p.is_absolute():
-            return p
-        candidate = self.path / p
+            raise ValueError(
+                f"Access denied: absolute paths are not allowed (got '{name}')."
+            )
+        candidate = (self.path / p).resolve()
+        workspace_root = self.path.resolve()
+        if not candidate.is_relative_to(workspace_root):
+            raise ValueError(
+                f"Access denied: '{name}' resolves outside the workspace."
+            )
         return candidate
