@@ -2,7 +2,7 @@
 
 # OpenMemory
 
-**Persistent, semantic memory for AI agents - local-first, framework-agnostic, production-ready.**
+**Persistent, semantic memory for AI agents - mcp-native, local-first, framework-agnostic, production-ready.**
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![Tests](https://img.shields.io/badge/tests-316%20passing-brightgreen.svg)](#running-the-test-suite)
@@ -182,8 +182,8 @@ OpenMemory is designed around three values:
 ### Development Setup
 
 ```bash
-git clone https://github.com/your-org/openmemory.git
-cd openmemory
+git clone https://github.com/huss-mo/OpenMemory.git
+cd OpenMemory
 
 # Install with all dev dependencies
 pip install -e ".[dev,local]"
