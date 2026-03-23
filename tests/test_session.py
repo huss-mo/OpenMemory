@@ -28,8 +28,8 @@ class TestSessionCreation:
 
     def test_create_uses_auto_config_when_none_given(self, tmp_path, monkeypatch):
         """MemorySession.create() without a config must not raise."""
-        monkeypatch.setenv("groundmemory_ROOT_DIR", str(tmp_path))
-        monkeypatch.setenv("groundmemory_EMBEDDING__PROVIDER", "none")
+        monkeypatch.setenv("GROUNDMEMORY_ROOT_DIR", str(tmp_path))
+        monkeypatch.setenv("GROUNDMEMORY_EMBEDDING__PROVIDER", "none")
         s = MemorySession.create("auto_test")
         assert s is not None
         s.close()
@@ -169,8 +169,8 @@ class TestConfigFromYaml:
 
     def test_auto_falls_back_to_defaults_without_yaml(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
-        monkeypatch.delenv("groundmemory_EMBEDDING__BASE_URL", raising=False)
-        monkeypatch.setenv("groundmemory_EMBEDDING__PROVIDER", "none")
+        monkeypatch.delenv("GROUNDMEMORY_EMBEDDING__BASE_URL", raising=False)
+        monkeypatch.setenv("GROUNDMEMORY_EMBEDDING__PROVIDER", "none")
         # Patch _load_yaml_config so the project-root groundmemory.yaml is not picked up
         import groundmemory.config as _cfg_module
         monkeypatch.setattr(_cfg_module, "_load_yaml_config", lambda filename="groundmemory.yaml": {})
@@ -183,8 +183,8 @@ class TestConfigFromYaml:
         cfg_file.write_text(yaml.dump({
             "embedding": {"provider": "local", "local_model": "all-MiniLM-L6-v2"},
         }))
-        monkeypatch.setenv("groundmemory_EMBEDDING__PROVIDER", "none")
-        monkeypatch.delenv("groundmemory_EMBEDDING__BASE_URL", raising=False)
+        monkeypatch.setenv("GROUNDMEMORY_EMBEDDING__PROVIDER", "none")
+        monkeypatch.delenv("GROUNDMEMORY_EMBEDDING__BASE_URL", raising=False)
         cfg = groundmemoryConfig.from_yaml(cfg_file)
         # env var should win over YAML
         assert cfg.embedding.provider == "none"
