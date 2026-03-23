@@ -7,11 +7,12 @@ For a project overview and quick start, see [README.md](README.md).
 
 ## Table of Contents
 
-- [GroundMemory - Documentation](#GroundMemory---documentation)
+- [GroundMemory - Documentation](#groundmemory---documentation)
   - [Table of Contents](#table-of-contents)
   - [Installation \& Configuration](#installation--configuration)
     - [Option 1 - Docker](#option-1---docker)
     - [Option 2 - pip](#option-2---pip)
+    - [Network Access](#network-access)
     - [Embedding Providers](#embedding-providers)
   - [MCP Server](#mcp-server)
     - [Running the Server](#running-the-server)
@@ -25,25 +26,25 @@ For a project overview and quick start, see [README.md](README.md).
   - [Tools Reference](#tools-reference)
   - [Architecture](#architecture)
     - [Architectural Layers](#architectural-layers)
-      - [1. Workspace (`GroundMemory/core/workspace.py`)](#1-workspace-GroundMemorycoreworkspacepy)
-      - [2. Memory Storage (`GroundMemory/core/storage.py`)](#2-memory-storage-GroundMemorycorestoragepy)
-      - [3. Text Chunker (`GroundMemory/core/chunker.py`)](#3-text-chunker-GroundMemorycorechunkerpy)
-      - [4. Embedding Providers (`GroundMemory/core/embeddings.py`)](#4-embedding-providers-GroundMemorycoreembeddingspy)
-      - [5. Memory Index (`GroundMemory/core/index.py`)](#5-memory-index-GroundMemorycoreindexpy)
-      - [6. Hybrid Search (`GroundMemory/core/search.py`)](#6-hybrid-search-GroundMemorycoresearchpy)
-      - [7. Relation Graph (`GroundMemory/core/relations.py`)](#7-relation-graph-GroundMemorycorerelationspy)
-      - [8. Sync (`GroundMemory/core/sync.py`)](#8-sync-GroundMemorycoresyncpy)
-      - [9. Bootstrap Injector (`GroundMemory/bootstrap/injector.py`)](#9-bootstrap-injector-GroundMemorybootstrapinjectorpy)
-      - [10. Compaction Hooks (`GroundMemory/bootstrap/compaction.py`)](#10-compaction-hooks-GroundMemorybootstrapcompactionpy)
-      - [11. Tools (`GroundMemory/tools/`)](#11-tools-GroundMemorytools)
-      - [12. LLM Adapters (`GroundMemory/adapters/`)](#12-llm-adapters-GroundMemoryadapters)
-      - [13. Session (`GroundMemory/session.py`)](#13-session-GroundMemorysessionpy)
+      - [1. Workspace (`GroundMemory/core/workspace.py`)](#1-workspace-groundmemorycoreworkspacepy)
+      - [2. Memory Storage (`GroundMemory/core/storage.py`)](#2-memory-storage-groundmemorycorestoragepy)
+      - [3. Text Chunker (`GroundMemory/core/chunker.py`)](#3-text-chunker-groundmemorycorechunkerpy)
+      - [4. Embedding Providers (`GroundMemory/core/embeddings.py`)](#4-embedding-providers-groundmemorycoreembeddingspy)
+      - [5. Memory Index (`GroundMemory/core/index.py`)](#5-memory-index-groundmemorycoreindexpy)
+      - [6. Hybrid Search (`GroundMemory/core/search.py`)](#6-hybrid-search-groundmemorycoresearchpy)
+      - [7. Relation Graph (`GroundMemory/core/relations.py`)](#7-relation-graph-groundmemorycorerelationspy)
+      - [8. Sync (`GroundMemory/core/sync.py`)](#8-sync-groundmemorycoresyncpy)
+      - [9. Bootstrap Injector (`GroundMemory/bootstrap/injector.py`)](#9-bootstrap-injector-groundmemorybootstrapinjectorpy)
+      - [10. Compaction Hooks (`GroundMemory/bootstrap/compaction.py`)](#10-compaction-hooks-groundmemorybootstrapcompactionpy)
+      - [11. Tools (`GroundMemory/tools/`)](#11-tools-groundmemorytools)
+      - [12. LLM Adapters (`GroundMemory/adapters/`)](#12-llm-adapters-groundmemoryadapters)
+      - [13. Session (`GroundMemory/session.py`)](#13-session-groundmemorysessionpy)
       - [13 (note). Session vs Workspace - not two different things](#13-note-session-vs-workspace---not-two-different-things)
   - [Data Flow](#data-flow)
   - [Tech Stack](#tech-stack)
   - [Configuration](#configuration)
     - [Minimum Config](#minimum-config)
-    - [groundmemory.yaml Reference](#GroundMemoryyaml-reference)
+    - [groundmemory.yaml Reference](#groundmemoryyaml-reference)
     - [Environment Variables](#environment-variables)
 
 ---
@@ -55,11 +56,10 @@ For a project overview and quick start, see [README.md](README.md).
 Docker is the recommended way to run GroundMemory. It requires no Python environment setup and keeps your workspace data in a local `./data` directory.
 
 ```bash
-git clone https://github.com/huss-mo/GroundMemory
-cd GroundMemory
+git clone https://github.com/huss-mo/GroundMemory && cd GroundMemory
 cp GroundMemory/config/.env.example .env
 docker compose up -d
-# → listening on http://0.0.0.0:4242/mcp
+# → listening on http://127.0.0.1:4242/mcp
 ```
 
 The default compose file starts a single `GroundMemory` service using BM25-only search (no embedding API required). Edit `.env` to switch providers - see [Embedding Providers](#embedding-providers) below.
@@ -111,7 +111,7 @@ Then start the MCP server:
 
 ```bash
 GROUNDMEMORY_WORKSPACE=my-project groundmemory-mcp
-# → listening on http://0.0.0.0:4242/mcp
+# → listening on http://127.0.0.1:4242/mcp
 ```
 
 **Configuration for pip installs**
@@ -138,6 +138,39 @@ cp GroundMemory/config/.env.example ~/.groundmemory/.env
 ```
 
 **A cwd-level config file (`./groundmemory.yaml` or `./.env`) is also checked** as a fallback, which is useful for per-project overrides in dev mode.
+
+### Network Access
+
+By default, GroundMemory binds to `127.0.0.1` (localhost only). This means only processes on the same machine can reach the server - which is the right default for a single-user setup.
+
+**LAN access (same local network)**
+
+To accept connections from other devices on your network, set the host to `0.0.0.0` and add your server's LAN address to the allowed-hosts list:
+
+```bash
+# pip / direct install
+GROUNDMEMORY_MCP__HOST=0.0.0.0 \
+GROUNDMEMORY_MCP__ALLOWED_HOSTS="192.168.1.50:4242" \
+groundmemory-mcp
+```
+
+```yaml
+# groundmemory.yaml
+mcp:
+  host: 0.0.0.0
+  allowed_hosts:
+    - "192.168.1.50:4242"
+```
+
+For Docker, uncomment the two required network-access lines in `docker-compose.yml` (see the comments in that file).
+
+`allowed_hosts` is the DNS-rebinding protection allowlist - it controls which `Host:` header values the server accepts. List every address clients will use to reach the server (e.g. `192.168.1.50:4242`). `localhost` and `127.0.0.1` are always allowed implicitly. Only exact strings are supported - wildcards and CIDR ranges are not.
+
+**Public internet access**
+
+GroundMemory has no authentication layer. Do not expose it directly on the public internet. Use a reverse proxy (nginx, Caddy, Traefik) with TLS and authentication in front of it.
+
+The `GROUNDMEMORY_MCP__FORWARDED_ALLOW_IPS` setting controls which upstream IPs uvicorn trusts to pass `X-Forwarded-For` / `X-Real-IP` headers. Set it to your proxy's internal IP when running behind a reverse proxy (default: `127.0.0.1`).
 
 ### Embedding Providers
 
@@ -209,14 +242,14 @@ Each server instance owns a single workspace. Multiple workspaces require multip
 The `groundmemory-mcp` command is available after installing GroundMemory (MCP support is included by default).
 
 ```bash
-# Default: workspace "default", host 0.0.0.0, port 4242
+# Default: workspace "default", host 127.0.0.1, port 4242
 groundmemory-mcp
 
 # Custom workspace
 GROUNDMEMORY_WORKSPACE=my-project groundmemory-mcp
 
 # Custom host and port
-GROUNDMEMORY_MCP_HOST=127.0.0.1 GROUNDMEMORY_MCP_PORT=9000 groundmemory-mcp
+GROUNDMEMORY_MCP__HOST=0.0.0.0 GROUNDMEMORY_MCP__PORT=9000 groundmemory-mcp
 ```
 
 The server starts at `http://<host>:<port>/mcp` using the `streamable-http` MCP transport.
@@ -693,40 +726,39 @@ Settings in these files are overridden by environment variables, which in turn a
 # ---------------------------------------------------------------------------
 embedding:
   # provider options:
-  #   "none"   - BM25-only, no extra deps, no API key needed (default)
-  #   "openai" - any OpenAI-compatible HTTP endpoint, no extra deps needed
-  #   "local"  - sentence-transformers (install with: pip install "groundmemory[local]")
+  #   "none"   — BM25 keyword search only (no vector search, no GPU needed) [default]
+  #   "openai" — OpenAI-compatible HTTP API (no extra install required)
+  #   "local"  — sentence-transformers (requires: pip install groundmemory[local])
   provider: none
 
   # --- sentence-transformers (provider: local) ---
-  # Requires: pip install "groundmemory[local]"  (not installed by default)
+  # Requires: pip install groundmemory[local]  (not installed by default)
   # Any model from https://www.sbert.net/docs/pretrained_models.html
-  # local_model: all-MiniLM-L6-v2      # fast, 384-dim, good general quality
+  # local_model: all-MiniLM-L6-v2      # fast, 384-dim, good quality
   # local_model: all-mpnet-base-v2     # slower, 768-dim, higher quality
 
   # --- OpenAI-compatible API (provider: openai) ---
-  # No extra install required. Supports OpenAI, Ollama, LM Studio, vLLM,
-  # LiteLLM, Mistral, Together, and any endpoint following the OpenAI format.
-
-  # Real OpenAI:
-  # base_url: ~        # leave blank to use api.openai.com
+  # Supports: OpenAI, Ollama, LM Studio, vLLM, Mistral, Together, etc.
+  #
+  # Real OpenAI (leave base_url blank):
+  # base_url: ~
   # api_key: sk-...
   # model: text-embedding-3-small
-
-  # Ollama (local):
+  #
+  # Ollama local server:
   # base_url: http://localhost:11434/v1
-  # api_key: ollama          # required by the client but ignored by Ollama
+  # api_key: ollama          # required by the OpenAI client but ignored by Ollama
   # model: nomic-embed-text  # pull with: ollama pull nomic-embed-text
-
+  #
   # LM Studio:
   # base_url: http://localhost:1234/v1
   # api_key: lm-studio
   # model: nomic-ai/nomic-embed-text-v1.5-GGUF
-
-  # LiteLLM proxy:
-  # base_url: http://localhost:4000/v1
-  # api_key: sk-...
-  # model: text-embedding-3-small
+  #
+  # OpenRouter:
+  # base_url: https://openrouter.ai/api/v1
+  # api_key: sk-or-...
+  # model: openai/text-embedding-3-small
 
   # Number of texts sent per embedding API call
   # batch_size: 64
@@ -735,24 +767,24 @@ embedding:
 # Hybrid search
 # ---------------------------------------------------------------------------
 search:
-  # Number of results returned per memory_search call
+  # Number of results returned by memory_search
   top_k: 6
 
-  # Oversampling factor: top_k * candidate_multiplier candidates are fetched
-  # from each path (vector + keyword) before merging and re-ranking
+  # Oversampling factor: top_k * candidate_multiplier candidates fetched per
+  # path (vector + keyword) before merging and re-ranking
   candidate_multiplier: 4
 
   # Weight for vector similarity score (0.0–1.0)
   # keyword_weight = 1.0 - vector_weight
-  # Set to 0.0 for pure BM25 (recommended when provider: none)
+  # Set to 0.0 for pure BM25 (useful when provider: none)
   vector_weight: 0.7
 
   # Temporal decay: score *= exp(-decay_rate * days_old)
   # 0.0 disables decay; 0.01 halves relevance after ~70 days
   temporal_decay_rate: 0.0
 
-  # MMR (Maximal Marginal Relevance) diversity re-ranking
-  # 0.0 = disabled (pure relevance ranking), 1.0 = maximum result diversity
+  # MMR (Maximal Marginal Relevance) diversity
+  # 0.0 = disabled (pure relevance), 1.0 = maximum diversity
   mmr_lambda: 0.0
 
 # ---------------------------------------------------------------------------
@@ -766,15 +798,7 @@ chunking:
   overlap: 80
 
 # ---------------------------------------------------------------------------
-# Relation graph
-# ---------------------------------------------------------------------------
-relations:
-  # Cosine similarity threshold above which two relation triples are considered
-  # semantic duplicates and merged. Set to 1.0 to disable semantic dedup.
-  dedup_threshold: 0.92
-
-# ---------------------------------------------------------------------------
-# Bootstrap - system-prompt injection at session start
+# Bootstrap — system-prompt injection at session start
 # ---------------------------------------------------------------------------
 bootstrap:
   # Maximum characters per file before a truncation warning is appended
@@ -790,36 +814,100 @@ bootstrap:
   inject_daily_logs: true        # daily/YYYY-MM-DD.md (today + yesterday)
   inject_relations: true         # RELATIONS.md
 
-  # Reconcile the SQLite relations table from RELATIONS.md at session start.
-  # Enable when you edit RELATIONS.md manually outside the agent so that
-  # changes are reflected at the next session start. Disabled by default.
+  # Reconcile the SQLite relations table from RELATIONS.md before injecting context.
+  #
+  # Purpose: if you manually edit RELATIONS.md outside the agent (e.g. in a text
+  # editor or version-control merge), SQLite may be out of date. Setting this to
+  # true reconciles it from the file at the start of every session so that changes
+  # are always reflected.
+  #
+  # Leave disabled (false) in normal usage — the agent keeps both stores in sync
+  # automatically via memory_relate, memory_replace_*, and memory_delete.
   sync_relations_on_bootstrap: false
 
 # ---------------------------------------------------------------------------
-# Compaction - pre-context-window-flush hooks
+# Compaction — pre-context-window-flush hooks
 # ---------------------------------------------------------------------------
+#
+# When token usage crosses the flush threshold the adapter injects a message
+# asking the agent to call memory_write for anything worth keeping, before the
+# LLM provider silently drops or summarises old messages.
+#
+# Flush fires when: current_tokens >= min(soft_threshold_tokens, context_window_tokens - reserve_floor_tokens)
 compaction:
   # Enable compaction detection
   enabled: true
 
-  # Remaining tokens in the context window that cause should_compact() to return True
-  soft_threshold_tokens: 4000
+  # Total token capacity of the model being used.
+  # Used to derive the hard flush limit together with reserve_floor_tokens.
+  context_window_tokens: 128000
 
-  # Minimum tokens always kept free for the model's response
-  reserve_floor_tokens: 20000
+  # Flush when this many tokens have been *consumed* in the context window
+  # (counted from zero — this is token usage, not tokens remaining).
+  soft_threshold_tokens: 64000
 
-  # Messages injected at the flush turn (override to customise wording)
+  # Always keep this many tokens free for the model's reply.
+  # Hard flush limit = context_window_tokens - reserve_floor_tokens.
+  reserve_floor_tokens: 32000
+
+  # Messages injected at the flush turn (override if you need custom wording)
   # system_prompt: "Session nearing compaction. Store durable memories now."
-  # user_prompt: "Review the conversation and write lasting facts to memory. Reply DONE when finished."
+  # user_prompt: "Review the conversation and write lasting facts to memory using memory_write. Reply DONE when finished."
 
 # ---------------------------------------------------------------------------
 # MCP server (groundmemory-mcp command)
 # ---------------------------------------------------------------------------
 # mcp:
-#   # Host address the MCP server binds to
-#   host: 0.0.0.0
-#   # TCP port the MCP server listens on
-#   port: 4242
+    # Host address the MCP server binds to.
+    # Default "127.0.0.1" allows connections from this machine only.
+    # Set to "0.0.0.0" to accept connections from other machines (see below).
+    # host: 127.0.0.1
+ 
+    # TCP port the MCP server listens on.
+    # port: 4242
+ 
+    # --- Network access (disabled by default) ---
+    #
+    # By default, the server is local-only. To allow access from another machine:
+    #
+    # 1. Set host to "0.0.0.0" (binds to all interfaces).
+    # 2. Add the Host header value your client sends to allowed_hosts.
+    #    This is always your machine's IP:port as the client sees it.
+    #    "localhost" and "127.0.0.1" are always allowed and do not need to be listed.
+    #
+    # Example - allow a single LAN client:
+    #   host: "0.0.0.0"
+    #   allowed_hosts:
+    #     - "192.168.1.50:4242"
+    #
+    # Note: allowed_hosts requires exact strings - wildcards and CIDR ranges are
+    # not supported. List each IP:port you want to allow individually.
+    #
+    # allowed_hosts: []
+    #
+    # --- Reverse proxy / forwarded headers ---
+    #
+    # forwarded_allow_ips controls which upstream IPs uvicorn trusts to set
+    # X-Forwarded-For and X-Real-IP headers.
+    #
+    # You do NOT need to set this for plain LAN access (host: 0.0.0.0 +
+    # allowed_hosts). Only set it when a reverse proxy (nginx, Caddy, Traefik)
+    # sits in front of GroundMemory and forwards requests. Set it to the proxy's
+    # internal IP so uvicorn trusts the headers that proxy sends.
+    #
+    # forwarded_allow_ips: "127.0.0.1"
+    #
+    # --- Public internet ---
+    #
+    # GroundMemory has no authentication layer. Do not expose it directly to the
+    # public internet. Place it behind a reverse proxy (nginx, Caddy, Traefik)
+    # that handles TLS and authentication, then set host to "127.0.0.1" and
+    # add the public hostname to allowed_hosts:
+    #
+    #   host: "127.0.0.1"
+    #   allowed_hosts:
+    #     - "yourdomain.com"
+    #   forwarded_allow_ips: "127.0.0.1"
 ```
 
 ---
@@ -886,8 +974,10 @@ All settings are available as environment variables using the `GROUNDMEMORY_` pr
 
 | Variable | Description | Default |
 |---|---|---|
-| `GROUNDMEMORY_MCP_HOST` | Host address the server binds to | `0.0.0.0` |
-| `GROUNDMEMORY_MCP_PORT` | TCP port the server listens on | `4242` |
+| `GROUNDMEMORY_MCP__HOST` | Host address the server binds to. Set to `0.0.0.0` for LAN access (see [Network Access](#network-access)). | `127.0.0.1` |
+| `GROUNDMEMORY_MCP__PORT` | TCP port the server listens on | `4242` |
+| `GROUNDMEMORY_MCP__ALLOWED_HOSTS` | Comma-separated list of `Host:` header values to allow (DNS-rebinding protection). `localhost` and `127.0.0.1` are always allowed. Required when `HOST=0.0.0.0`. | `` |
+| `GROUNDMEMORY_MCP__FORWARDED_ALLOW_IPS` | IPs uvicorn trusts to pass `X-Forwarded-For` headers. Not needed for plain LAN access - only set when a reverse proxy sits in front of GroundMemory. | `127.0.0.1` |
 
 **Configuration priority (highest wins):**
 

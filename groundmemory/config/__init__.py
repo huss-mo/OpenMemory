@@ -109,7 +109,7 @@ def _load_yaml_config(filename: str = "groundmemory.yaml") -> dict[str, Any]:
 class EmbeddingConfig(BaseSettings):
     """Embedding provider configuration.
 
-    Environment variables (prefix: groundmemory_EMBEDDING__):
+    Environment variables (prefix: GROUNDMEMORY_EMBEDDING__):
         PROVIDER    - "local" | "openai" | "none"
         LOCAL_MODEL - sentence-transformers model name
         BASE_URL    - OpenAI-compatible endpoint URL
@@ -119,7 +119,7 @@ class EmbeddingConfig(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_prefix="groundmemory_EMBEDDING__",
+        env_prefix="GROUNDMEMORY_EMBEDDING__",
         env_file=_env_file_paths(),
         extra="ignore",
     )
@@ -145,7 +145,7 @@ class EmbeddingConfig(BaseSettings):
     def auto_detect_provider(cls, v: str) -> str:
         """Auto-select openai provider if base_url or OPENAI_API_KEY is set."""
         if v == "local":
-            if os.environ.get("groundmemory_EMBEDDING__BASE_URL") or os.environ.get(
+            if os.environ.get("GROUNDMEMORY_EMBEDDING__BASE_URL") or os.environ.get(
                 "OPENAI_API_KEY"
             ):
                 return "openai"
@@ -155,13 +155,13 @@ class EmbeddingConfig(BaseSettings):
 class ChunkingConfig(BaseSettings):
     """Text chunking configuration.
 
-    Environment variables (prefix: groundmemory_CHUNKING__):
+    Environment variables (prefix: GROUNDMEMORY_CHUNKING__):
         TOKENS  - target chunk size in approximate tokens
         OVERLAP - overlap between chunks in approximate tokens
     """
 
     model_config = SettingsConfigDict(
-        env_prefix="groundmemory_CHUNKING__",
+        env_prefix="GROUNDMEMORY_CHUNKING__",
         env_file=_env_file_paths(),
         extra="ignore",
     )
@@ -173,7 +173,7 @@ class ChunkingConfig(BaseSettings):
 class SearchConfig(BaseSettings):
     """Hybrid search configuration.
 
-    Environment variables (prefix: groundmemory_SEARCH__):
+    Environment variables (prefix: GROUNDMEMORY_SEARCH__):
         TOP_K               - number of results to return
         CANDIDATE_MULTIPLIER - candidates fetched per path before merging
         VECTOR_WEIGHT       - weight for vector similarity (0.0-1.0)
@@ -182,7 +182,7 @@ class SearchConfig(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_prefix="groundmemory_SEARCH__",
+        env_prefix="GROUNDMEMORY_SEARCH__",
         env_file=_env_file_paths(),
         extra="ignore",
     )
@@ -202,7 +202,7 @@ class CompactionConfig(BaseSettings):
     that tells the agent to call memory_write for anything worth keeping, before
     the LLM provider silently drops or summarises old messages.
 
-    Environment variables (prefix: groundmemory_COMPACTION__):
+    Environment variables (prefix: GROUNDMEMORY_COMPACTION__):
         ENABLED                 - enable/disable compaction hooks
         CONTEXT_WINDOW_TOKENS   - total token capacity of the model being used
         SOFT_THRESHOLD_TOKENS   - flush when token *usage* reaches this count
@@ -216,7 +216,7 @@ class CompactionConfig(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_prefix="groundmemory_COMPACTION__",
+        env_prefix="GROUNDMEMORY_COMPACTION__",
         env_file=_env_file_paths(),
         extra="ignore",
     )
@@ -240,14 +240,14 @@ class CompactionConfig(BaseSettings):
 class RelationsConfig(BaseSettings):
     """Relation graph configuration.
 
-    Environment variables (prefix: groundmemory_RELATIONS__):
+    Environment variables (prefix: GROUNDMEMORY_RELATIONS__):
         DEDUP_THRESHOLD - cosine similarity above which two triples are
                           considered semantic duplicates (0.0-1.0).
                           Set to 1.0 to disable semantic dedup (exact-match only).
     """
 
     model_config = SettingsConfigDict(
-        env_prefix="groundmemory_RELATIONS__",
+        env_prefix="GROUNDMEMORY_RELATIONS__",
         env_file=_env_file_paths(),
         extra="ignore",
     )
@@ -258,25 +258,40 @@ class RelationsConfig(BaseSettings):
 class MCPConfig(BaseSettings):
     """MCP server configuration.
 
-    Environment variables (prefix: groundmemory_MCP__):
-        HOST - host address the server binds to
-        PORT - TCP port the server listens on
+    Environment variables (prefix: GROUNDMEMORY_MCP__):
+        HOST                - host address the server binds to
+        PORT                - TCP port the server listens on
+        FORWARDED_ALLOW_IPS - comma-separated IPs trusted to set X-Forwarded-* headers.
+                              Use "*" only when a trusted reverse proxy handles all ingress.
+        ALLOWED_HOSTS       - comma-separated additional Host header values accepted by the
+                              MCP server (DNS rebinding protection). "localhost" and
+                              "127.0.0.1" are always allowed. Add your LAN IP or public
+                              hostname when accessing the server from another machine.
     """
 
     model_config = SettingsConfigDict(
-        env_prefix="groundmemory_MCP__",
+        env_prefix="GROUNDMEMORY_MCP__",
         env_file=_env_file_paths(),
         extra="ignore",
     )
 
-    host: str = "0.0.0.0"
+    host: str = "127.0.0.1"
     port: int = 4242
+    # Trusted upstream proxy IPs for X-Forwarded-* headers (uvicorn).
+    # Default "127.0.0.1" means only a local proxy is trusted.
+    # Set to "*" only when a reverse proxy controls all ingress to this server.
+    forwarded_allow_ips: str = "127.0.0.1"
+    # Extra Host header values accepted by the MCP server (DNS rebinding protection).
+    # "localhost" and "127.0.0.1" are always implicitly allowed.
+    # Add your LAN IP (e.g. "192.168.1.50:4242") to allow access from other machines.
+    # Leave empty (default) for local-only access.
+    allowed_hosts: list[str] = Field(default_factory=list)
 
 
 class BootstrapConfig(BaseSettings):
     """Bootstrap injection configuration.
 
-    Environment variables (prefix: groundmemory_BOOTSTRAP__):
+    Environment variables (prefix: GROUNDMEMORY_BOOTSTRAP__):
         MAX_CHARS_PER_FILE       - max chars per injected file before truncation
         MAX_TOTAL_CHARS          - max chars across all injected files
         INJECT_LONG_TERM_MEMORY  - inject MEMORY.md
@@ -295,7 +310,7 @@ class BootstrapConfig(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_prefix="groundmemory_BOOTSTRAP__",
+        env_prefix="GROUNDMEMORY_BOOTSTRAP__",
         env_file=_env_file_paths(),
         extra="ignore",
     )
@@ -333,7 +348,7 @@ class groundmemoryConfig(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_prefix="groundmemory_",
+        env_prefix="GROUNDMEMORY_",
         env_file=_env_file_paths(),
         env_nested_delimiter="__",
         extra="ignore",
@@ -396,13 +411,13 @@ class groundmemoryConfig(BaseSettings):
             return filtered
 
         # Instantiate sub-configs (env vars override YAML values automatically)
-        embedding = EmbeddingConfig(**_filter_env_overrides(embedding_data, "groundmemory_EMBEDDING__"))
-        chunking = ChunkingConfig(**_filter_env_overrides(chunking_data, "groundmemory_CHUNKING__"))
-        search = SearchConfig(**_filter_env_overrides(search_data, "groundmemory_SEARCH__"))
-        relations = RelationsConfig(**_filter_env_overrides(relations_data, "groundmemory_RELATIONS__"))
-        compaction = CompactionConfig(**_filter_env_overrides(compaction_data, "groundmemory_COMPACTION__"))
-        bootstrap = BootstrapConfig(**_filter_env_overrides(bootstrap_data, "groundmemory_BOOTSTRAP__"))
-        mcp = MCPConfig(**_filter_env_overrides(mcp_data, "groundmemory_MCP__"))
+        embedding = EmbeddingConfig(**_filter_env_overrides(embedding_data, "GROUNDMEMORY_EMBEDDING__"))
+        chunking = ChunkingConfig(**_filter_env_overrides(chunking_data, "GROUNDMEMORY_CHUNKING__"))
+        search = SearchConfig(**_filter_env_overrides(search_data, "GROUNDMEMORY_SEARCH__"))
+        relations = RelationsConfig(**_filter_env_overrides(relations_data, "GROUNDMEMORY_RELATIONS__"))
+        compaction = CompactionConfig(**_filter_env_overrides(compaction_data, "GROUNDMEMORY_COMPACTION__"))
+        bootstrap = BootstrapConfig(**_filter_env_overrides(bootstrap_data, "GROUNDMEMORY_BOOTSTRAP__"))
+        mcp = MCPConfig(**_filter_env_overrides(mcp_data, "GROUNDMEMORY_MCP__"))
 
         return cls(
             embedding=embedding,

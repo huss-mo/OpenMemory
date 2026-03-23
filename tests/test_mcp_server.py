@@ -47,6 +47,31 @@ def _make_mock_session(**tool_returns):
 
 
 # ---------------------------------------------------------------------------
+# MCPConfig defaults
+# ---------------------------------------------------------------------------
+
+
+class TestMCPConfigDefaults:
+    def test_forwarded_allow_ips_default(self):
+        from groundmemory.config import MCPConfig
+
+        cfg = MCPConfig()
+        assert cfg.forwarded_allow_ips == "127.0.0.1"
+
+    def test_allowed_hosts_default_empty(self):
+        from groundmemory.config import MCPConfig
+
+        cfg = MCPConfig()
+        assert cfg.allowed_hosts == []
+
+    def test_host_default_is_localhost(self):
+        from groundmemory.config import MCPConfig
+
+        cfg = MCPConfig()
+        assert cfg.host == "127.0.0.1"
+
+
+# ---------------------------------------------------------------------------
 # _unwrap
 # ---------------------------------------------------------------------------
 

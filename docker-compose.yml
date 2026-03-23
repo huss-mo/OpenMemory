@@ -38,6 +38,31 @@ services:
         required: false
     environment:
       GROUNDMEMORY_WORKSPACE: default
+      # ---------------------------------------------------------------------------
+      # Network access - commented out by default (local-only is the safe default).
+      #
+      # By default the server binds to 127.0.0.1 and only accepts connections from
+      # the same machine. To allow access from other machines on your network:
+      #
+      # 1. Bind to all interfaces so Docker can route external traffic in:
+      #    GROUNDMEMORY_MCP__HOST: "0.0.0.0"
+      #
+      # 2. Allow the Host header your client sends (your machine's LAN IP):
+      #    GROUNDMEMORY_MCP__ALLOWED_HOSTS: "192.168.1.50:4242"
+      #    (list multiple values separated by commas)
+      #
+      # 3. FORWARDED_ALLOW_IPS is NOT needed for plain LAN access (steps 1+2 above
+      #    are sufficient). Only set it when a reverse proxy (nginx, Caddy, Traefik)
+      #    sits in front of GroundMemory. Set it to the proxy's internal IP so
+      #    uvicorn trusts the X-Forwarded-For headers that proxy sends:
+      #    GROUNDMEMORY_MCP__FORWARDED_ALLOW_IPS: "172.17.0.1"
+      #    (use "*" only when a trusted proxy exclusively controls all ingress)
+      #
+      # See DOCS.md - Network Access for the full explanation.
+      # ---------------------------------------------------------------------------
+      # GROUNDMEMORY_MCP__HOST: "0.0.0.0"
+      # GROUNDMEMORY_MCP__ALLOWED_HOSTS: "192.168.1.50:4242"
+      # GROUNDMEMORY_MCP__FORWARDED_ALLOW_IPS: "172.17.0.1"
 
   # ---------------------------------------------------------------------------
   # Second workspace example - uncomment to run a second isolated workspace

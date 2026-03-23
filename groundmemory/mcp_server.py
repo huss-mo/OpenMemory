@@ -31,20 +31,22 @@ def _get_session():
     return _session
 
 
-# DNS rebinding protection (added in mcp 1.24) rejects any Host header that
-# isn't localhost/127.0.0.1, which breaks LAN / Docker / remote access where
-# the client connects via an IP address or hostname.  We disable it here
-# because groundmemory is a self-hosted, single-user service - callers must
-# already have network access to reach port 4242, so the DNS rebinding attack
-# vector does not apply.  If you expose the server to untrusted networks,
-# re-enable this and add your allowed hosts to TransportSecuritySettings
-# (allowed_hosts=["your-host:4242"]) instead.
-mcp = FastMCP(
-    "groundmemory",
-    transport_security=TransportSecuritySettings(
-        enable_dns_rebinding_protection=False,
-    ),
-)
+# DNS rebinding protection is enabled by default. "localhost" and "127.0.0.1"
+# are always implicitly allowed. When accessing the server from another machine
+# (LAN or remote), add your host/IP to GROUNDMEMORY_MCP__ALLOWED_HOSTS so the
+# server accepts the incoming Host header. See DOCS.md - Network Access.
+def _build_mcp() -> FastMCP:
+    cfg = groundmemoryConfig.auto()
+    return FastMCP(
+        "groundmemory",
+        transport_security=TransportSecuritySettings(
+            enable_dns_rebinding_protection=True,
+            allowed_hosts=cfg.mcp.allowed_hosts,
+        ),
+    )
+
+
+mcp = _build_mcp()
 
 
 # ---------------------------------------------------------------------------
@@ -359,7 +361,12 @@ def main() -> None:
     _seed_example_config()
     cfg = groundmemoryConfig.auto()
     app = mcp.streamable_http_app()
-    uvicorn.run(app, host=cfg.mcp.host, port=cfg.mcp.port, forwarded_allow_ips="*")
+    uvicorn.run(
+        app,
+        host=cfg.mcp.host,
+        port=cfg.mcp.port,
+        forwarded_allow_ips=cfg.mcp.forwarded_allow_ips,
+    )
 
 
 if __name__ == "__main__":
