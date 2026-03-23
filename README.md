@@ -5,7 +5,7 @@
 **Persistent, semantic memory for AI agents - mcp-native, local-first, framework-agnostic, production-ready.**
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-316%20passing-brightgreen.svg)](#running-the-test-suite)
+[![Tests](https://img.shields.io/badge/tests-327%20passing-brightgreen.svg)](#running-the-test-suite)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![GitHub repo size](https://img.shields.io/github/repo-size/huss-mo/GroundMemory)
 ![GitHub language count](https://img.shields.io/github/languages/count/huss-mo/GroundMemory)
