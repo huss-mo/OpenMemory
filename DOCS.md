@@ -858,56 +858,56 @@ compaction:
 # MCP server (groundmemory-mcp command)
 # ---------------------------------------------------------------------------
 # mcp:
-    # Host address the MCP server binds to.
-    # Default "127.0.0.1" allows connections from this machine only.
-    # Set to "0.0.0.0" to accept connections from other machines (see below).
-    # host: 127.0.0.1
- 
-    # TCP port the MCP server listens on.
-    # port: 4242
- 
-    # --- Network access (disabled by default) ---
-    #
-    # By default, the server is local-only. To allow access from another machine:
-    #
-    # 1. Set host to "0.0.0.0" (binds to all interfaces).
-    # 2. Add the Host header value your client sends to allowed_hosts.
-    #    This is always your machine's IP:port as the client sees it.
-    #    "localhost" and "127.0.0.1" are always allowed and do not need to be listed.
-    #
-    # Example - allow a single LAN client:
-    #   host: "0.0.0.0"
-    #   allowed_hosts:
-    #     - "192.168.1.50:4242"
-    #
-    # Note: allowed_hosts requires exact strings - wildcards and CIDR ranges are
-    # not supported. List each IP:port you want to allow individually.
-    #
-    # allowed_hosts: []
-    #
-    # --- Reverse proxy / forwarded headers ---
-    #
-    # forwarded_allow_ips controls which upstream IPs uvicorn trusts to set
-    # X-Forwarded-For and X-Real-IP headers.
-    #
-    # You do NOT need to set this for plain LAN access (host: 0.0.0.0 +
-    # allowed_hosts). Only set it when a reverse proxy (nginx, Caddy, Traefik)
-    # sits in front of GroundMemory and forwards requests. Set it to the proxy's
-    # internal IP so uvicorn trusts the headers that proxy sends.
-    #
-    # forwarded_allow_ips: "127.0.0.1"
-    #
-    # --- Public internet ---
-    #
-    # GroundMemory has no authentication layer. Do not expose it directly to the
-    # public internet. Place it behind a reverse proxy (nginx, Caddy, Traefik)
-    # that handles TLS and authentication, then set host to "127.0.0.1" and
-    # add the public hostname to allowed_hosts:
-    #
-    #   host: "127.0.0.1"
-    #   allowed_hosts:
-    #     - "yourdomain.com"
-    #   forwarded_allow_ips: "127.0.0.1"
+  # Host address the MCP server binds to.
+  # Default "127.0.0.1" allows connections from this machine only.
+  # Set to "0.0.0.0" to accept connections from other machines (see below).
+  # host: 127.0.0.1
+
+  # TCP port the MCP server listens on.
+  # port: 4242
+
+  # --- Network access (disabled by default) ---
+  #
+  # By default, the server is local-only. To allow access from another machine:
+  #
+  # 1. Set host to "0.0.0.0" (binds to all interfaces).
+  # 2. Add the Host header value your client sends to allowed_hosts.
+  #    This is always your machine's IP:port as the client sees it.
+  #    "localhost" and "127.0.0.1" are always allowed and do not need to be listed.
+  #
+  # Example - allow a single LAN client:
+  #   host: "0.0.0.0"
+  #   allowed_hosts:
+  #     - "192.168.1.50:4242"
+  #
+  # Note: allowed_hosts requires exact strings - wildcards and CIDR ranges are
+  # not supported. List each IP:port you want to allow individually.
+  #
+  # allowed_hosts: []
+  #
+  # --- Reverse proxy / forwarded headers ---
+  #
+  # forwarded_allow_ips controls which upstream IPs uvicorn trusts to set
+  # X-Forwarded-For and X-Real-IP headers.
+  #
+  # You do NOT need to set this for plain LAN access (host: 0.0.0.0 +
+  # allowed_hosts). Only set it when a reverse proxy (nginx, Caddy, Traefik)
+  # sits in front of GroundMemory and forwards requests. Set it to the proxy's
+  # internal IP so uvicorn trusts the headers that proxy sends.
+  #
+  # forwarded_allow_ips: "127.0.0.1"
+  #
+  # --- Public internet ---
+  #
+  # GroundMemory has no authentication layer. Do not expose it directly to the
+  # public internet. Place it behind a reverse proxy (nginx, Caddy, Traefik)
+  # that handles TLS and authentication, then set host to "127.0.0.1" and
+  # add the public hostname to allowed_hosts:
+  #
+  #   host: "127.0.0.1"
+  #   allowed_hosts:
+  #     - "yourdomain.com"
+  #   forwarded_allow_ips: "127.0.0.1"
 ```
 
 ---
