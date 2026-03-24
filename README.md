@@ -43,7 +43,8 @@ pip install groundmemory && groundmemory-mcp
 }
 ```
 
-You can enable network access and replace `127.0.0.1` with your server's LAN IP - see [DOCS.md - Network Access](DOCS.md#network-access).
+You can enable network access and replace `127.0.0.1` with your server's LAN IP - see [DOCS.md - Network Access](DOCS.md#network-access). </br>
+You can also use the MCP server over the `stdio` transport - see [DOCS.md - Client Configuration](DOCS.md#client-configuration).
 
 Your agent now has structured, searchable memory that persists across every session - long-term facts, a user profile, agent instructions, an entity graph, and daily logs - all managed automatically. No changes to your agent's code required.
 

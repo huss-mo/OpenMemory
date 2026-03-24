@@ -255,7 +255,7 @@ The server starts at `http://<host>:<port>/mcp` using the `streamable-http` MCP 
 
 ### Client Configuration
 
-GroundMemory speaks standard MCP over HTTP, so any MCP-compatible client works. The table below shows the most common categories and examples — the list is not exhaustive.
+GroundMemory speaks standard MCP over HTTP, so any MCP-compatible client works. The table below shows the most common categories and examples - the list is not exhaustive.
 
 | Category | Examples | How to connect |
 |---|---|---|
@@ -268,6 +268,18 @@ GroundMemory speaks standard MCP over HTTP, so any MCP-compatible client works. 
   "mcpServers": {
     "GroundMemory": {
       "url": "http://<server-ip>:4242/mcp"
+    }
+  }
+}
+```
+
+For  clients that use the `stdio` transpost, add the following block instead:
+```json
+{
+  "mcpServers": { 
+    "GroundMemory": { 
+      "command": "npx", 
+      "args": ["mcp-remote@latest", "http://<server-ip>:4242/mcp", "--allow-http"] 
     }
   }
 }
