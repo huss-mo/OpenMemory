@@ -4,7 +4,7 @@
 
 **Persistent, semantic memory for AI agents - mcp-native, local-first, framework-agnostic, production-ready.**
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![Unit Tests](https://github.com/huss-mo/GroundMemory/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/huss-mo/GroundMemory/actions/workflows/unit-tests.yml)
 [![Test Suite](https://img.shields.io/badge/test%20suite-380%20tests-blue.svg)](#running-the-test-suite)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -56,15 +56,15 @@ For installation options, embedding providers, multiple workspaces, and the Pyth
 
 ## What Becomes Possible
 
-Without memory, every session starts from zero. With GroundMemory, agents can maintain continuity across time, accumulate knowledge, and behave like they actually know the person they're working with.
+Without memory, every session starts from zero. With GroundMemory, agents can maintain continuity across time, accumulate knowledge, and behave like they actually know the person they're working with. It makes conversationg stateful, fluid, and natural.
 
-**A coding assistant that doesn't repeat itself.** It remembers your stack, your preferred patterns, the architectural decisions you've already made, and the approaches you've already ruled out - so it stops re-suggesting the same things.
+**A coding/personal assistant that builds a profile over time.** After a few conversations, it knows your schedule, your priorities, how you like to communicate, your tech stack, your preferred patterns, the architectural decisions you've already made. It doesn't need to ask.
 
-**A personal assistant that builds a profile over time.** After a few weeks it knows your schedule, your priorities, the people you work with, and how you like to communicate. It doesn't need to ask.
+**A research agent that constructs a knowledge graph.** As it reads papers and sources across many sessions, it records entities, relationships, and findings.
 
-**A research agent that constructs a knowledge graph.** As it reads papers and sources across many sessions, it records entities, relationships, and findings. Searches later return relevant facts regardless of how they were originally worded.
+**A single identity across every AI tool you use.** Your workspace is not bound to one assistant. Connect Claude Desktop, Cursor, Cline, and any other MCP-compatible tool to the same GroundMemory server and they all share the same memory - your preferences, your stack, your ongoing work. You stop being a stranger every time you open a different tool. There is something genuinely different about being *known* rather than just answered - it shifts the relationship from transactional to collaborative, and removes the quiet tax of re-establishing context that most people don't notice until it's gone.
 
-**A customer-facing agent with per-user memory.** Each user gets their own workspace - preferences, history, ongoing context - giving every interaction a personalised, stateful feel without any custom infrastructure.
+**A customer-facing agent with per-user memory.** In multi-user setups, each user gets their own workspace - preferences, history, ongoing context - giving every interaction a personalised, stateful feel without any custom infrastructure.
 
 **A long-running autonomous agent that survives context limits.** When the context window fills, compaction hooks instruct the agent to flush important facts to memory before the window rolls over. The next session picks up exactly where the last one left off.
 
@@ -126,11 +126,9 @@ Comparison reflects publicly documented features as of MAR-2026. Submit a PR if 
 
 ## Tools
 
-GroundMemory exposes 9 tools via MCP and the Python API: `memory_bootstrap`, `memory_write`, `memory_search`, `memory_get`, `memory_list`, `memory_delete`, `memory_replace_text`, `memory_replace_lines`, and `memory_relate`.
+In normal mode, GroundMemory exposes four tools: `memory_bootstrap`, `memory_read`, `memory_write`, and `memory_relate`. An optional `memory_list` tool can be enabled via config. In dispatcher mode, all actions are routed through a single `memory_tool` call - useful for clients that perform better with fewer tools in scope.
 
-`MEMORY.md` and all `daily/*.md` files are **append-only** - `memory_delete`, `memory_replace_text`, and `memory_replace_lines` enforce this and will reject edits to those files. Only `USER.md`, `AGENTS.md`, and `RELATIONS.md` are mutable.
-
-**When using the MCP server**, instruct your agent to call `memory_bootstrap` at the start of every session before doing anything else. This loads the full memory context (MEMORY.md, USER.md, AGENTS.md, RELATIONS.md, daily logs) into the conversation. Clients that support the MCP Prompts primitive (Cline, Claude Desktop) can instead use the `memory_bootstrap_prompt` prompt from their Prompts panel.
+**When using the MCP server**, instruct your agent to call `memory_bootstrap` at the start of every session before doing anything else, if you find out that it doesn't do that by default. This loads the full memory context (MEMORY.md, USER.md, AGENTS.md, RELATIONS.md, daily logs) into the conversation. Clients that support the MCP Prompts primitive (Cline, Claude Desktop) can instead use the `memory_bootstrap_prompt` prompt from their Prompts panel.
 
 **When using the Python API**, call `session.bootstrap()` and pass the result as your system prompt - no tool call is needed.
 

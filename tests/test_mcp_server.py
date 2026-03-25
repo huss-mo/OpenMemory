@@ -473,7 +473,7 @@ class TestMcpToolRegistration:
         """Extract tool names from the FastMCP instance."""
         try:
             import asyncio
-            tools = asyncio.get_event_loop().run_until_complete(mcp_mod.mcp.list_tools())
+            tools = asyncio.run(mcp_mod.mcp.list_tools())
             return {t.name for t in tools}
         except Exception:
             mgr = getattr(mcp_mod.mcp, "_tool_manager", None) or getattr(mcp_mod.mcp, "tool_manager", None)
@@ -486,7 +486,7 @@ class TestMcpToolRegistration:
         """Extract prompt names from the FastMCP instance."""
         try:
             import asyncio
-            prompts = asyncio.get_event_loop().run_until_complete(mcp_mod.mcp.list_prompts())
+            prompts = asyncio.run(mcp_mod.mcp.list_prompts())
             return {p.name for p in prompts}
         except Exception:
             mgr = getattr(mcp_mod.mcp, "_prompt_manager", None) or getattr(mcp_mod.mcp, "prompt_manager", None)
