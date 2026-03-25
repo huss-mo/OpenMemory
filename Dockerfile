@@ -9,22 +9,27 @@
 #   docker build --build-arg EXTRAS=local . # + sentence-transformers
 # ---------------------------------------------------------------------------
 ARG EXTRAS=""
+ARG PYTHON_VERSION=3.12
 
-FROM python:3.12-slim AS base
+# ---------------------------------------------------------------------------
+# Stage 1: builder - installs gcc + all Python deps into a venv
+# ---------------------------------------------------------------------------
+FROM python:${PYTHON_VERSION}-slim AS builder
 
-# System deps: gcc needed by some transitive build steps (e.g. tiktoken)
-RUN apt-get update && apt-get install -y --no-install-recommends gcc && \
-    rm -rf /var/lib/apt/lists/*
+ARG EXTRAS
+
+# Install build deps in a single layer; no cleanup needed (stage is discarded)
+RUN apt-get update && apt-get install -y --no-install-recommends gcc
 
 WORKDIR /app
 
-# Copy project metadata first for better layer caching
-COPY pyproject.toml ./
-COPY README.md ./
+# Create an isolated venv so we can copy it cleanly to the runtime stage
+RUN python -m venv /venv
+ENV PATH="/venv/bin:$PATH"
+
+COPY pyproject.toml README.md ./
 COPY groundmemory/ ./groundmemory/
 
-# Install the package (and optional extras if requested via build arg)
-ARG EXTRAS
 RUN if [ -n "$EXTRAS" ]; then \
         pip install --no-cache-dir ".[$EXTRAS]"; \
     else \
@@ -32,20 +37,30 @@ RUN if [ -n "$EXTRAS" ]; then \
     fi
 
 # ---------------------------------------------------------------------------
-# Runtime environment
+# Stage 2: runtime - clean image, no compiler, no build cache
 # ---------------------------------------------------------------------------
+FROM python:${PYTHON_VERSION}-slim AS runtime
 
-# All workspace data is written here - mount a host directory at this path
-ENV GROUNDMEMORY_ROOT_DIR=/data
+# Don't run as root
+RUN useradd --create-home appuser
 
-# Default workspace name (override via GROUNDMEMORY_WORKSPACE env var)
-ENV GROUNDMEMORY_WORKSPACE=default
+# Pull in only the installed venv from the builder stage.
+# The package is fully installed inside /venv - no source tree copy needed.
+COPY --from=builder /venv /venv
 
-# Default to BM25-only; override in .env to switch to openai-compatible API
-ENV GROUNDMEMORY_EMBEDDING__PROVIDER=none
+WORKDIR /app
+
+ENV PATH="/venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    GROUNDMEMORY_ROOT_DIR=/data \
+    GROUNDMEMORY_WORKSPACE=default \
+    GROUNDMEMORY_EMBEDDING__PROVIDER=none
 
 EXPOSE 4242
 
 VOLUME ["/data"]
+
+USER appuser
 
 CMD ["groundmemory-mcp"]

@@ -2,9 +2,13 @@
 .gitignore
 .venv
 .env
+.python-version
+Dockerfile
+docker-compose.yml
 data/
 tests/
 _assets/
+_untracked/
 examples/
 *.egg-info
 __pycache__
