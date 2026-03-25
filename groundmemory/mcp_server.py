@@ -66,14 +66,14 @@ def memory_tool(
     action: str,
     args: Optional[dict] = None,
 ) -> str:
-    """Unified memory dispatcher. Pass `action` to select the operation:
-
+    """Unified memory tool dispatcher. Pass `action` to select the operation:
+      
+      bootstrap: Return the full memory bootstrap context (no args needed). Must be called **once at the very start of every session** before doing anything else.
+      describe:  Return full schema for an action (args: {"action": "<name>"}). Call this once before invoking action (other than bootstrap) to understand what args it needs.
       read:      Search memory or read a file.
       write:     Append/replace/delete memory.
-      bootstrap: Return the full memory bootstrap context (no args needed).
       relate:    Add an entity relation.
       list:      List all memory files with sizes.
-      describe:  Return full schema for an action (args: {"action": "<name>"}).
 
     Args:
         action: Which memory operation to perform.
@@ -88,7 +88,7 @@ def memory_tool(
 def memory_bootstrap() -> str:
     """Load the full memory context for this workspace into the conversation.
 
-    Call this tool **once at the very start of every session** before doing
+    Must be called **once at the very start of every session** before doing
     anything else. It assembles MEMORY.md (long-term facts), USER.md (user
     profile), AGENTS.md (agent instructions), RELATIONS.md (entity graph),
     and the last two daily logs into a single formatted block.

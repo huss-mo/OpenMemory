@@ -18,7 +18,7 @@ SCHEMA = {
     "name": "memory_bootstrap",
     "description": (
         "Load the full memory context for this workspace into the conversation. "
-        "Call this tool once at the very start of every session before doing anything else. "
+        "Must be called once at the very start of every session before doing anything else. "
         "It assembles MEMORY.md (long-term facts), USER.md (user profile), "
         "AGENTS.md (agent instructions), RELATIONS.md (entity graph), "
         "and the last two daily logs into a single formatted block."
