@@ -1,7 +1,7 @@
-"""
+﻿"""
 File synchronization: keeps the SQLite index in sync with the workspace Markdown files.
 
-Uses SHA-256 content hashing (not timestamps) to detect changes — reliable across
+Uses SHA-256 content hashing (not timestamps) to detect changes - reliable across
 file copies, moves, and system clock changes.
 """
 

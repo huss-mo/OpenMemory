@@ -1,4 +1,4 @@
-"""Tests for the memory_relate tool."""
+﻿"""Tests for the memory_relate tool."""
 from __future__ import annotations
 
 import uuid
@@ -30,7 +30,7 @@ class TestMemoryRelateBasic:
         session.execute_tool(
             "memory_relate", subject="Dave", predicate="knows", object="Eve"
         )
-        get = session.execute_tool("memory_get", file="RELATIONS.md")
+        get = session.execute_tool("memory_read", file="RELATIONS.md")
         assert get["status"] == "ok"
         assert get["exists"] is True
 
@@ -38,7 +38,7 @@ class TestMemoryRelateBasic:
         session.execute_tool(
             "memory_relate", subject="Eve", predicate="created_by", object="Frank"
         )
-        get = session.execute_tool("memory_get", file="RELATIONS.md")
+        get = session.execute_tool("memory_read", file="RELATIONS.md")
         content = get["content"]
         assert "Eve" in content
         assert "Frank" in content
@@ -53,7 +53,7 @@ class TestMemoryRelateBasic:
             r = session.execute_tool("memory_relate", subject=s, predicate=p, object=o)
             assert r["status"] == "ok"
 
-        get = session.execute_tool("memory_get", file="RELATIONS.md")
+        get = session.execute_tool("memory_read", file="RELATIONS.md")
         content = get["content"]
         for s, _, o in relations:
             assert s in content or o in content
@@ -215,7 +215,7 @@ class TestSemanticDedup:
             r2 = s.execute_tool(
                 "memory_relate", subject="Alice", predicate="employed_by", object="Acme"
             )
-            # Second call returns ok (dedup is silent — not an error)
+            # Second call returns ok (dedup is silent - not an error)
             assert r2["status"] == "ok"
             # Only one relation should be stored in SQLite
             rows = s.index.get_all_relations()
@@ -252,7 +252,7 @@ class TestSemanticDedup:
             "Alice works_at Acme": v1,
             "Alice employed_by Acme Corp": v2,
         })
-        # Set threshold very high (0.99) — these vectors have sim=0.0 < 0.99
+        # Set threshold very high (0.99) - these vectors have sim=0.0 < 0.99
         s = _make_dedup_session(tmp_path, provider, threshold=0.99)
         try:
             s.execute_tool(
@@ -321,7 +321,7 @@ class TestMemoryRelateSupersedes:
             object="One Industry",
             supersedes=True,
         )
-        get = session.execute_tool("memory_get", file="RELATIONS.md")
+        get = session.execute_tool("memory_read", file="RELATIONS.md")
         content = get["content"]
         assert "iHorizons" not in content
         assert "One Industry" in content

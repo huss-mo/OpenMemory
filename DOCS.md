@@ -285,23 +285,27 @@ For  clients that use the `stdio` transpost, add the following block instead:
 }
 ```
 
-Clients that support the MCP Prompts primitive (such as Cline and Claude Desktop) will also show a `memory_bootstrap_prompt` entry in their Prompts panel — click it at session start to inject memory context without waiting for the agent to call the tool. For agent frameworks and platforms that use the Python API, see [Connecting to Your AI Agent Using The Python API](#connecting-to-your-ai-agent-using-the-python-api).
+Clients that support the MCP Prompts primitive (such as Cline and Claude Desktop) will also show a `memory_bootstrap_prompt` entry in their Prompts panel - click it at session start to inject memory context without waiting for the agent to call the tool. For agent frameworks and platforms that use the Python API, see [Connecting to Your AI Agent Using The Python API](#connecting-to-your-ai-agent-using-the-python-api).
 
 ### Available MCP Tools
 
-Once connected, the client has access to 9 memory tools and 1 prompt:
+Once connected, the client has access to **4 core tools** and 1 prompt. Two additional tools are available behind config flags.
+
+**Core tools (always registered)**
 
 | Tool | Description |
 |---|---|
 | `memory_bootstrap` | **Call once at session start.** Returns the full memory context (MEMORY.md, USER.md, AGENTS.md, RELATIONS.md, daily logs) as a formatted string. |
-| `memory_write` | Store a memory in long-term storage (`MEMORY.md`) or today's daily log |
-| `memory_search` | Hybrid semantic + keyword search across all memory tiers |
-| `memory_get` | Read a slice of a workspace file by line range |
-| `memory_list` | List workspace files (`target="files"`), list daily log names (`target="daily"`), or preview a specific file (pass `file="MEMORY.md"`) |
-| `memory_delete` | Delete a 1-indexed line range from a mutable workspace file |
-| `memory_replace_text` | Replace the first occurrence of an exact string in a mutable workspace file |
-| `memory_replace_lines` | Replace a 1-indexed inclusive line range in a mutable workspace file |
-| `memory_relate` | Record a typed entity relationship (`subject → predicate → object`) |
+| `memory_read` | Unified read tool. Supply `query` for hybrid search (SEARCH mode) or `file` for direct file/line-range access (GET mode). |
+| `memory_write` | Unified write tool. APPEND, REPLACE_TEXT, REPLACE_LINES, or DELETE - mode is selected by the combination of parameters supplied. |
+| `memory_relate` | Record a typed entity relationship (`subject → predicate → object`) with semantic deduplication. |
+
+**Optional tools (config-gated)**
+
+| Tool | Config flag | Description |
+|---|---|---|
+| `memory_list` | `mcp.expose_memory_list: true` | List workspace files with sizes and line counts. |
+| `memory_tool` | `mcp.dispatcher_mode: true` | Single dispatcher tool - replaces all four core tools with one `action` + `args` call. |
 
 | Prompt | Description |
 |---|---|
@@ -411,24 +415,41 @@ for block in response.content:
 ## Python API Example
 
 ```python
-from GroundMemory.session import MemorySession
+from groundmemory.session import MemorySession
 
 # Create (or reopen) a named workspace
 session = MemorySession.create("my-project")
 
-# Write a long-term memory
-session.execute_tool("memory_write", content="User prefers concise answers.", tier="long_term")
+# Append a long-term memory
+session.execute_tool("memory_write", file="MEMORY.md", content="User prefers concise answers.")
 
-# Write a daily log entry
-session.execute_tool("memory_write", content="Working on the auth service refactor.", tier="daily")
+# Append a daily log entry
+session.execute_tool("memory_write", file="USER.md", content="Working on the auth service refactor.")
 
 # Record a relationship between entities
 session.execute_tool("memory_relate", subject="Alice", predicate="works_at", object="Acme Corp")
 
-# Search across all memory tiers
-result = session.execute_tool("memory_search", query="communication preferences")
-for item in result["data"]["results"]:
+# Search across all memory tiers (SEARCH mode)
+result = session.execute_tool("memory_read", query="communication preferences")
+for item in result["results"]:
     print(item["content"])
+
+# Read a specific file (GET mode)
+result = session.execute_tool("memory_read", file="USER.md")
+print(result["content"])
+
+# Read a line range (1-indexed, GET mode)
+result = session.execute_tool("memory_read", file="USER.md", start_line=5, end_line=10)
+print(result["content"])
+
+# Replace the first occurrence of a string (REPLACE_TEXT mode)
+session.execute_tool("memory_write", file="USER.md", search="old text", content="new text")
+
+# Replace a line range (REPLACE_LINES mode)
+session.execute_tool("memory_write", file="USER.md", start_line=5, end_line=7, content="new content")
+
+# Hard-delete a line range - physically removes lines, no tombstone (DELETE mode)
+session.execute_tool("memory_write", file="USER.md", start_line=5, end_line=7, content="")
 
 # Build the system prompt context block for your agent
 system_prompt = session.bootstrap()
@@ -440,40 +461,72 @@ system_prompt = session.bootstrap()
 
 ## Tools Reference
 
-Use `session.execute_tool(name, **kwargs)` to call tools programmatically, or pass `ALL_TOOLS` to your model framework directly.
+Use `session.execute_tool(name, **kwargs)` to call tools programmatically, or pass the schemas from `build_tool_registry(config)` to your model framework.
 
-> **Immutability rule:** `MEMORY.md` and all `daily/*.md` files are append-only. `memory_delete`, `memory_replace_text`, and `memory_replace_lines` will reject any attempt to modify them. Use `memory_write` to append new information to these files instead.
+> **Immutability rule:** `MEMORY.md` and all `daily/*.md` files are append-only. The DELETE, REPLACE_TEXT, and REPLACE_LINES modes of `memory_write` will reject any attempt to modify them. Use `memory_write` in APPEND mode to add new information to these files.
+>
+> **Hard-delete:** DELETE mode physically removes lines from the file - no tombstone comment is written.
 
-| Tool | Description | Required Parameters | Optional Parameters |
-|---|---|---|---|
-| `memory_write` | Append a memory to long-term storage or today's daily log | `content` | `tier` (default: `long_term`) |
-| `memory_search` | Hybrid semantic + keyword search across all memory tiers | `query` | `top_k`, `source` |
-| `memory_get` | Read a slice of a workspace file by 1-indexed line range | `file` | `start_line`, `end_line` |
-| `memory_list` | List workspace files, daily log names, or preview a specific file | `target` (`"files"` or `"daily"`, default: `"files"`) | `file` |
-| `memory_delete` | Tombstone-delete a 1-indexed line range from a mutable file | `file`, `start_line`, `end_line` | - |
-| `memory_replace_text` | Replace the first exact string match in a mutable file | `file`, `search`, `replacement` | - |
-| `memory_replace_lines` | Replace a 1-indexed inclusive line range in a mutable file | `file`, `start_line`, `end_line`, `replacement` | - |
-| `memory_relate` | Record a typed entity relationship (`subject → predicate → object`) | `subject`, `predicate`, `object` | - |
+**`memory_read`** - Unified read tool
 
-**`memory_write` tiers** (`tier` parameter):
-
-| Value | Written to | Behaviour |
+| Parameter | Type | Description |
 |---|---|---|
-| `long_term` | `MEMORY.md` | Appended permanently; survives all sessions. **Immutable** - append only. |
-| `daily` | `daily/YYYY-MM-DD.md` | Appended to today's date-stamped log. **Immutable** - append only. |
-| `user` | `USER.md` | Updates the stable user profile. Mutable. |
-| `agent` | `AGENTS.md` | Updates agent operating instructions. Mutable. |
+| `query` | string (optional) | Natural-language search query → **SEARCH mode** |
+| `file` | string (optional) | File to read → **GET mode** (or SEARCH filter when combined with `query`) |
+| `top_k` | int (optional) | Max results to return in SEARCH mode |
+| `start_line` | int (optional) | 1-based first line to return in GET mode |
+| `end_line` | int (optional) | 1-based last line (inclusive) in GET mode |
 
-**`memory_search` source filters** (`source` parameter):
+Mode dispatch: `query` alone → SEARCH; `file` alone → GET; both → GET (file wins for slicing); neither → error.
 
-| Value | Searches |
+**`memory_write`** - Unified write tool
+
+| Mode | Trigger | Parameters |
+|---|---|---|
+| **APPEND** | No `search`, no `start_line`/`end_line` | `file`, `content` (+ optional `tags`) |
+| **REPLACE_TEXT** | `search` provided | `file`, `search`, `content` |
+| **REPLACE_LINES** | `start_line` + `end_line` + non-empty `content` | `file`, `start_line`, `end_line`, `content` |
+| **DELETE** | `start_line` + `end_line` + `content=""` | `file`, `start_line`, `end_line`, `content=""` |
+
+APPEND targets and their destination files:
+
+| `file` value | Written to | Behaviour |
+|---|---|---|
+| `MEMORY.md` | `MEMORY.md` | Appended permanently. **Immutable** - append only. |
+| `daily` | `daily/YYYY-MM-DD.md` | Appended to today's log. **Immutable** - append only. |
+| `USER.md` | `USER.md` | Updates the stable user profile. Mutable. |
+| `AGENTS.md` | `AGENTS.md` | Updates agent operating instructions. Mutable. |
+
+**`memory_read` source filters** (SEARCH mode, pass `file=` to restrict):
+
+| `file` value | Searches |
 |---|---|
-| *(omitted)* | All tiers |
-| `long_term` | `MEMORY.md` only |
+| *(omitted)* | All files |
+| `MEMORY.md` | Long-term memory only |
+| `USER.md` | User profile only |
+| `AGENTS.md` | Agent instructions only |
 | `daily` | All daily logs |
-| `relations` | `RELATIONS.md` + SQLite graph |
-| `user` | `USER.md` only |
-| `agents` | `AGENTS.md` only |
+| `RELATIONS.md` | Relations file + SQLite graph |
+
+**`memory_relate`** - Record a typed entity relationship
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `subject` | string | required | Source entity (e.g. "Alice") |
+| `predicate` | string | required | Relationship type (e.g. "works_at") |
+| `object` | string | required | Target entity (e.g. "Acme Corp") |
+| `note` | string | `""` | Optional free-text annotation |
+| `source_file` | string | `"RELATIONS.md"` | Workspace-relative file |
+| `confidence` | float | `1.0` | Confidence score 0.0–1.0 |
+| `supersedes` | bool | `false` | Delete all prior `(subject, predicate)` triples before writing |
+
+**`memory_list`** *(optional - requires `mcp.expose_memory_list: true`)*
+
+Lists all workspace files with sizes and line counts. No required parameters.
+
+**`memory_tool`** *(optional - requires `mcp.dispatcher_mode: true`)*
+
+Single dispatcher that replaces all four core tools. Pass `action` (one of `read`, `write`, `bootstrap`, `relate`, `list`, `describe`) and `args` (the same parameters the underlying tool accepts).
 
 ---
 
@@ -562,7 +615,7 @@ Single consolidated module for all relation logic. Stores typed entity triples (
 
 Format for each line in RELATIONS.md:
 ```
-- [Subject] --predicate--> [Object] (YYYY-MM-DD) — "optional note"
+- [Subject] --predicate--> [Object] (YYYY-MM-DD) - "optional note"
 ```
 
 Semantic deduplication: before inserting, the new triple is embedded and compared (cosine similarity) against all existing triples. If similarity ≥ `dedup_threshold` (default 0.92) the write is skipped and the existing triple is returned.
@@ -579,18 +632,20 @@ Assembles a system-prompt block from workspace files, respecting per-file and to
 > **Python API only.** Compaction hooks are only meaningful when you control the message loop yourself - i.e. when using the Python API directly (via `session.should_compact()` and `session.compaction_prompts()`). When GroundMemory is running as an MCP server, it has no visibility into the client's conversation history or token usage, so compaction cannot be triggered automatically. In that case, compaction is the responsibility of the MCP client or agent framework.
 
 #### 11. Tools (`GroundMemory/tools/`)
-Eight JSON-schema-described tools exposed to the LLM via function calling:
+Four core tools + two optional (config-gated) tools exposed to the LLM via function calling:
 
-| Tool | File written | Notes |
+| Tool | File | Notes |
 |---|---|---|
-| `memory_write` | `MEMORY.md` or `daily/YYYY-MM-DD.md` | Immediately re-indexes the changed file |
-| `memory_search` | - | Full hybrid search pipeline |
-| `memory_get` | - | Line-range read of any workspace file |
-| `memory_list` | - | Directory listing or file preview |
-| `memory_delete` | Mutable files only | Tombstone-style deletion (1-indexed); re-indexes. Rejected on `MEMORY.md`/`daily/*.md`. When file is `RELATIONS.md`, also deletes the corresponding SQLite relation rows via `parse_relations_from_text`. |
-| `memory_replace_text` | Mutable files only | Replaces first exact string match in-place; re-indexes. Rejected on `MEMORY.md`/`daily/*.md`. When file is `RELATIONS.md`, validates replacement format via `validate_relations_replacement` and reconciles SQLite. |
-| `memory_replace_lines` | Mutable files only | Replaces a 1-indexed inclusive line range in-place; re-indexes. Rejected on `MEMORY.md`/`daily/*.md`. When file is `RELATIONS.md`, validates replacement format via `validate_relations_replacement` and reconciles SQLite. |
-| `memory_relate` | `RELATIONS.md` + SQLite | Semantic dedup before insert. Pass `supersedes=True` to replace all prior `(subject, predicate)` triples (e.g. job change, relocation). |
+| `memory_bootstrap` | - | Assembles and returns the full workspace context as a Markdown string. |
+| `memory_read` | - | Unified read: SEARCH mode (hybrid vector+BM25) or GET mode (file/line-range). |
+| `memory_write` | various | Unified write: APPEND, REPLACE_TEXT, REPLACE_LINES, DELETE - dispatched by parameter combination. Hard-delete (physical line removal); rejected on `MEMORY.md`/`daily/*.md` for edit modes. |
+| `memory_relate` | `RELATIONS.md` + SQLite | Semantic dedup before insert. `supersedes=True` deletes prior `(subject, predicate)` triples. |
+| `memory_list` *(optional)* | - | Lists all workspace files with sizes and line counts. Gated by `mcp.expose_memory_list`. |
+| `memory_tool` *(optional)* | - | Single dispatcher - routes `action` + `args` to the appropriate underlying tool. Gated by `mcp.dispatcher_mode`. |
+
+**Tool registry (`GroundMemory/tools/__init__.py`):**
+
+`build_tool_registry(config)` returns `(all_tools, tool_runners, tool_schemas)` based on config flags. `dispatcher_mode=True` replaces all four core tools with the single `memory_tool` dispatcher. `expose_memory_list=True` adds `memory_list` to the core set.
 
 **Shared utilities (`GroundMemory/tools/base.py`):**
 
@@ -598,7 +653,7 @@ Eight JSON-schema-described tools exposed to the LLM via function calling:
 |---|---|
 | `ok(data)` / `err(msg)` | Wrap a successful or error tool result |
 | `is_immutable(file)` | Return `True` for `MEMORY.md` and `daily/*.md` |
-| `sync_after_edit(session, resolved, is_relations, base_payload)` | Re-index a file after an in-place edit and return `ok(payload)`. Calls `sync_file` (and, when `is_relations=True`, `sync_relations_from_file`) non-fatally - sync failures add a `warning` key rather than raising. Used by `memory_delete`, `memory_replace_text`, and `memory_replace_lines` to eliminate the duplicated re-index block that each function would otherwise carry. |
+| `sync_after_edit(session, resolved, is_relations, base_payload)` | Re-index a file after an in-place edit and return `ok(payload)`. Calls `sync_file` (and, when `is_relations=True`, `sync_relations_from_file`) non-fatally - sync failures add a `warning` key rather than raising. |
 
 #### 12. LLM Adapters (`GroundMemory/adapters/`)
 Thin schema-conversion + agentic-loop helpers:
@@ -627,35 +682,32 @@ LLM receives system prompt + tool schemas + user message
      │
      │  Model may call memory tools:
      │
-     ├─► memory_write(content, tier)
-     │       └─► storage.write_long_term / write_daily  → appends to Markdown
-     │       └─► sync.sync_file                         → chunk → embed → upsert SQLite
-     │
-     ├─► memory_search(query, top_k, source)
+     ├─► memory_read(query, ...)          ← SEARCH mode
      │       └─► provider.embed(query)                  → query vector
      │       └─► index.vector_search                    → cosine top-k
      │       └─► index.keyword_search                   → FTS5 BM25 top-k
      │       └─► merge + decay + graph expansion        → ranked SearchResult list
      │
-     ├─► memory_get(file, start_line, end_line)
-     │       └─► storage.read_file                      → raw Markdown slice
+     ├─► memory_read(file, ...)           ← GET mode
+     │       └─► storage.read_file                      → raw Markdown slice (1-indexed)
      │
-     ├─► memory_list(target, file)
-     │       └─► workspace.all_memory_files / storage   → file listing / preview
+     ├─► memory_write(file, content)      ← APPEND mode
+     │       └─► storage.write_long_term / write_daily  → appends to Markdown
+     │       └─► sync.sync_file                         → chunk → embed → upsert SQLite
      │
-     ├─► memory_delete(file, start_line, end_line)
-     │       └─► is_immutable(file) check               → reject if MEMORY.md or daily/*.md
-     │       └─► storage.delete_lines                   → tombstone in Markdown
-     │       └─► sync.sync_file                         → re-index
-     │
-     ├─► memory_replace_text(file, search, replacement)
+     ├─► memory_write(file, search, content)   ← REPLACE_TEXT mode
      │       └─► is_immutable(file) check               → reject if MEMORY.md or daily/*.md
      │       └─► storage.replace_text                   → first-match replacement in Markdown
      │       └─► sync.sync_file                         → re-index
      │
-     ├─► memory_replace_lines(file, start_line, end_line, replacement)
+     ├─► memory_write(file, start, end, content)  ← REPLACE_LINES mode
      │       └─► is_immutable(file) check               → reject if MEMORY.md or daily/*.md
      │       └─► storage.replace_lines                  → line-range replacement in Markdown
+     │       └─► sync.sync_file                         → re-index
+     │
+     ├─► memory_write(file, start, end, content="")  ← DELETE mode
+     │       └─► is_immutable(file) check               → reject if MEMORY.md or daily/*.md
+     │       └─► storage.hard_delete_lines              → physically removes lines (no tombstone)
      │       └─► sync.sync_file                         → re-index
      │
      └─► memory_relate(subject, predicate, object)
@@ -714,7 +766,7 @@ For **pip installs**, `groundmemory-mcp` automatically copies `groundmemory.yaml
 
 | Location | Resolved path | Use case |
 |---|---|---|
-| `$GROUNDMEMORY_ROOT_DIR/groundmemory.yaml` | `~/.groundmemory/groundmemory.yaml` (pip) or `/data/groundmemory.yaml` → `./data/groundmemory.yaml` on host (Docker) | Global user config — recommended for pip installs and Docker |
+| `$GROUNDMEMORY_ROOT_DIR/groundmemory.yaml` | `~/.groundmemory/groundmemory.yaml` (pip) or `/data/groundmemory.yaml` → `./data/groundmemory.yaml` on host (Docker) | Global user config - recommended for pip installs and Docker |
 | `./groundmemory.yaml` | cwd at process start | Per-project override in dev mode |
 
 The same search order applies to `.env` files (`$GROUNDMEMORY_ROOT_DIR/.env` then `./.env`).
@@ -737,9 +789,9 @@ Settings in these files are overridden by environment variables, which in turn a
 # ---------------------------------------------------------------------------
 embedding:
   # provider options:
-  #   "none"   — BM25 keyword search only (no vector search, no GPU needed) [default]
-  #   "openai" — OpenAI-compatible HTTP API (no extra install required)
-  #   "local"  — sentence-transformers (requires: pip install groundmemory[local])
+  #   "none"   - BM25 keyword search only (no vector search, no GPU needed) [default]
+  #   "openai" - OpenAI-compatible HTTP API (no extra install required)
+  #   "local"  - sentence-transformers (requires: pip install groundmemory[local])
   provider: none
 
   # --- sentence-transformers (provider: local) ---
@@ -809,7 +861,7 @@ chunking:
   overlap: 80
 
 # ---------------------------------------------------------------------------
-# Bootstrap — system-prompt injection at session start
+# Bootstrap - system-prompt injection at session start
 # ---------------------------------------------------------------------------
 bootstrap:
   # Maximum characters per file before a truncation warning is appended
@@ -832,12 +884,12 @@ bootstrap:
   # true reconciles it from the file at the start of every session so that changes
   # are always reflected.
   #
-  # Leave disabled (false) in normal usage — the agent keeps both stores in sync
+  # Leave disabled (false) in normal usage - the agent keeps both stores in sync
   # automatically via memory_relate, memory_replace_*, and memory_delete.
   sync_relations_on_bootstrap: false
 
 # ---------------------------------------------------------------------------
-# Compaction — pre-context-window-flush hooks
+# Compaction - pre-context-window-flush hooks
 # ---------------------------------------------------------------------------
 #
 # When token usage crosses the flush threshold the adapter injects a message
@@ -854,7 +906,7 @@ compaction:
   context_window_tokens: 128000
 
   # Flush when this many tokens have been *consumed* in the context window
-  # (counted from zero — this is token usage, not tokens remaining).
+  # (counted from zero - this is token usage, not tokens remaining).
   soft_threshold_tokens: 64000
 
   # Always keep this many tokens free for the model's reply.

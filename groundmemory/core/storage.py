@@ -1,4 +1,4 @@
-"""
+﻿"""
 Low-level Markdown file read/write operations.
 All writes are atomic (write to temp → rename) to prevent partial writes.
 """
@@ -188,7 +188,7 @@ def write_daily(workspace: Workspace, content: str, day: Optional[date] = None) 
     d = (day or date.today()).isoformat()
 
     if not path.exists():
-        header = f"# Daily Log — {d}\n"
+        header = f"# Daily Log - {d}\n"
         entry = f"\n{header}\n## {timestamp}\n\n{content.strip()}\n"
     else:
         entry = f"\n## {timestamp}\n\n{content.strip()}\n"
@@ -204,27 +204,35 @@ def write_daily(workspace: Workspace, content: str, day: Optional[date] = None) 
     }
 
 
-def delete_lines(path: Path, start_line: int, end_line: int) -> dict:
+def hard_delete_lines(path: Path, start_line: int, end_line: int) -> dict:
     """
-    Remove lines [start_line, end_line) from *path* (0-indexed).
-    Appends an audit comment instead of silently erasing.
+    Physically remove lines [start_line, end_line] from *path* (1-indexed, inclusive).
+    No tombstone is left - content is cleanly erased.
     Returns metadata.
     """
     if not path.exists():
         return {"error": f"File not found: {path}"}
 
     lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
-    removed = "".join(lines[start_line:end_line]).strip()
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-    tombstone = f"\n<!-- deleted {timestamp}: {removed[:80]}{'...' if len(removed)>80 else ''} -->\n"
+    total = len(lines)
 
-    new_lines = lines[:start_line] + [tombstone] + lines[end_line:]
+    if start_line < 1 or start_line > total:
+        return {"error": f"start_line {start_line} out of range (file has {total} lines)"}
+    if end_line < start_line or end_line > total:
+        return {"error": f"end_line {end_line} out of range (start={start_line}, total={total})"}
+
+    # Convert to 0-indexed
+    s = start_line - 1
+    e = end_line  # exclusive upper bound
+
+    removed_preview = "".join(lines[s:e]).strip()
+    new_lines = lines[:s] + lines[e:]
     _atomic_write(path, "".join(new_lines))
 
     return {
         "file": str(path),
         "deleted_lines": f"{start_line}-{end_line}",
-        "preview": removed[:80],
+        "preview": removed_preview[:80],
     }
 
 

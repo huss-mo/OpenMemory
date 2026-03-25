@@ -1,4 +1,4 @@
-"""
+﻿"""
 Hybrid search: BM25 keyword + vector cosine similarity with graph-aware expansion.
 
 Pipeline:
@@ -151,7 +151,7 @@ def _expand_with_relations(
 ) -> list[dict]:
     """
     For the top results, extract entity mentions and attach related relations
-    as `relation_context` on each result. Does not add new results — enriches
+    as `relation_context` on each result. Does not add new results - enriches
     existing ones with relational knowledge.
     """
     # Collect entities from top-k results
@@ -169,7 +169,7 @@ def _expand_with_relations(
         if rows:
             entity_relations[entity] = [
                 f"[{row['subject']}] --{row['predicate']}--> [{row['object']}]"
-                + (f" — {row['note']}" if row["note"] else "")
+                + (f" - {row['note']}" if row["note"] else "")
                 for row in rows
             ]
 

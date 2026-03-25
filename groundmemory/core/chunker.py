@@ -1,4 +1,4 @@
-"""
+﻿"""
 Markdown-aware text chunker.
 
 Splits content into overlapping chunks that respect Markdown heading boundaries.
@@ -96,7 +96,7 @@ def chunk_markdown(
 
     Strategy:
     1. Split on lines, tracking line numbers.
-    2. Heading lines (# / ## / ###) act as hard chunk boundaries —
+    2. Heading lines (# / ## / ###) act as hard chunk boundaries -
        a new heading always starts a fresh chunk.
     3. When accumulated characters exceed max_chars, flush the current chunk
        and carry *overlap_chars* worth of recent lines into the next one.

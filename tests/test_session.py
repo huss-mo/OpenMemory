@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from groundmemory.config import groundmemoryConfig, EmbeddingConfig, SearchConfig
+from groundmemory.config import groundmemoryConfig, EmbeddingConfig, MCPConfig, SearchConfig
 from groundmemory.session import MemorySession
 
 
@@ -12,6 +12,7 @@ class TestSessionCreation:
         cfg = groundmemoryConfig(
             root_dir=tmp_path,
             embedding=EmbeddingConfig(provider="none"),
+            mcp=MCPConfig(expose_memory_list=True),
         )
         s = MemorySession.create("default", config=cfg)
         assert s is not None
@@ -21,6 +22,7 @@ class TestSessionCreation:
         cfg = groundmemoryConfig(
             root_dir=tmp_path,
             embedding=EmbeddingConfig(provider="none"),
+            mcp=MCPConfig(expose_memory_list=True),
         )
         s = MemorySession.create("my_project", config=cfg)
         assert "my_project" in str(s.workspace.workspace_path)
@@ -38,21 +40,23 @@ class TestSessionCreation:
         cfg = groundmemoryConfig(
             root_dir=tmp_path,
             embedding=EmbeddingConfig(provider="none"),
+            mcp=MCPConfig(expose_memory_list=True),
         )
         with MemorySession.create("ctx_test", config=cfg) as s:
-            r = s.execute_tool("memory_write", content="CM test.", tier="long_term")
+            r = s.execute_tool("memory_write", file="MEMORY.md", content="CM test.")
             assert r["status"] == "ok"
 
     def test_two_sessions_are_independent(self, tmp_path):
         cfg = groundmemoryConfig(
             root_dir=tmp_path,
             embedding=EmbeddingConfig(provider="none"),
+            mcp=MCPConfig(expose_memory_list=True),
         )
         s1 = MemorySession.create("ws_a", config=cfg)
         s2 = MemorySession.create("ws_b", config=cfg)
 
-        s1.execute_tool("memory_write", content="Session A content.", tier="long_term")
-        r = s2.execute_tool("memory_search", query="Session A content")
+        s1.execute_tool("memory_write", file="MEMORY.md", content="Session A content.")
+        r = s2.execute_tool("memory_read", query="Session A content")
         # s2 should NOT find s1's content
         assert r["count"] == 0
 
@@ -64,27 +68,28 @@ class TestSessionCreation:
             root_dir=tmp_path,
             workspace="test",
             embedding=EmbeddingConfig(provider="none"),
+            mcp=MCPConfig(expose_memory_list=True),
         )
         s1 = MemorySession.create("persistent", config=cfg)
-        s1.execute_tool("memory_write", content="Persistent fact.", tier="long_term")
+        s1.execute_tool("memory_write", file="MEMORY.md", content="Persistent fact.")
         s1.close()
 
         # Reopen the same workspace
         s2 = MemorySession.create("persistent", config=cfg)
-        r = s2.execute_tool("memory_get", file="MEMORY.md")
+        r = s2.execute_tool("memory_read", file="MEMORY.md")
         assert "Persistent fact." in r["content"]
         s2.close()
 
 
 class TestSessionToolRegistry:
-    def test_all_six_tools_registered(self, session):
+    def test_all_four_core_tools_registered(self, session):
         from groundmemory.tools import TOOL_RUNNERS
         expected = {
-            "memory_write", "memory_search", "memory_get",
-            "memory_list", "memory_delete", "memory_relate",
-            "memory_replace_text", "memory_replace_lines",
+            "memory_bootstrap", "memory_read", "memory_write",
+            "memory_relate",
         }
-        assert expected == set(TOOL_RUNNERS.keys())
+        # The 4 core tools must all be registered; memory_list is optional/gated
+        assert expected.issubset(set(TOOL_RUNNERS.keys()))
 
     def test_unknown_tool_returns_error(self, session):
         r = session.execute_tool("nonexistent_tool")
@@ -98,7 +103,7 @@ class TestSessionSync:
         assert isinstance(result, dict)
 
     def test_sync_after_write_indexes_content(self, session):
-        session.execute_tool("memory_write", content="Sync test content.", tier="long_term")
+        session.execute_tool("memory_write", file="MEMORY.md", content="Sync test content.")
         result = session.sync()
         assert isinstance(result, dict)
         # Should have processed files
@@ -117,13 +122,13 @@ class TestSessionBootstrap:
 
     def test_bootstrap_includes_long_term_memory(self, session):
         content = "Bootstrap long term fact."
-        session.execute_tool("memory_write", content=content, tier="long_term")
+        session.execute_tool("memory_write", file="MEMORY.md", content=content)
         result = session.bootstrap()
         assert content in result
 
     def test_bootstrap_includes_daily_log(self, session):
         content = "Bootstrap daily note."
-        session.execute_tool("memory_write", content=content, tier="daily")
+        session.execute_tool("memory_write", file="daily", content=content)
         result = session.bootstrap()
         assert content in result
 

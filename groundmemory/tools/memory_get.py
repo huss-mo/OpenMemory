@@ -1,5 +1,5 @@
-"""
-memory_get tool — read a specific memory file or line range.
+﻿"""
+memory_get tool - read a specific memory file or line range.
 """
 
 from __future__ import annotations

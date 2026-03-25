@@ -1,4 +1,4 @@
-"""
+﻿"""
 Base class and shared utilities for all groundmemory tools.
 """
 
@@ -26,7 +26,7 @@ def is_immutable(file: str) -> bool:
     """
     Return True if *file* refers to an append-only immutable memory tier.
 
-    MEMORY.md and daily/*.md are write-once history files — their existing
+    MEMORY.md and daily/*.md are write-once history files - their existing
     content must never be mutated or deleted by the agent.  Only USER.md,
     AGENTS.md, and any other files are editable.
     """

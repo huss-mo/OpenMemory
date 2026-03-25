@@ -1,23 +1,23 @@
-"""
-Relation management — the single owner of all relation logic.
+﻿"""
+Relation management - the single owner of all relation logic.
 
 Stores named relationships between entities in two places simultaneously:
-  1. SQLite ``relations`` table  — fast structured lookup used during search
-  2. RELATIONS.md               — human-readable mirror, injected at bootstrap
+  1. SQLite ``relations`` table  - fast structured lookup used during search
+  2. RELATIONS.md               - human-readable mirror, injected at bootstrap
 
 Format in RELATIONS.md:
-  - [Alice] --leads--> [Auth Team] (2026-03-20) — "Added during sprint planning"
+  - [Alice] --leads--> [Auth Team] (2026-03-20) - "Added during sprint planning"
 
 Public API (used by tools, sync, session):
-  add_relation(...)                 — write a relation to both stores (with dedup / supersede)
-  get_relations(...)                — read relations from SQLite
-  parse_relations_from_text(…)      — parse valid relation lines from a text string
-  parse_relations_from_file(…)      — parse valid lines from RELATIONS.md
-  sync_relations_from_file(…)       — reconcile SQLite from RELATIONS.md
-  format_relations_for_context      — format relations as a Markdown block
-  validate_relations_replacement(…) — validate that replacement text is valid RELATIONS.md
-  RELATION_LINE_RE                  — compiled regex for a valid RELATIONS.md line
-  RELATIONS_FORMAT_REMINDER         — human-readable format reminder string
+  add_relation(...)                 - write a relation to both stores (with dedup / supersede)
+  get_relations(...)                - read relations from SQLite
+  parse_relations_from_text(…)      - parse valid relation lines from a text string
+  parse_relations_from_file(…)      - parse valid lines from RELATIONS.md
+  sync_relations_from_file(…)       - reconcile SQLite from RELATIONS.md
+  format_relations_for_context      - format relations as a Markdown block
+  validate_relations_replacement(…) - validate that replacement text is valid RELATIONS.md
+  RELATION_LINE_RE                  - compiled regex for a valid RELATIONS.md line
+  RELATIONS_FORMAT_REMINDER         - human-readable format reminder string
 """
 
 from __future__ import annotations
@@ -44,7 +44,7 @@ if TYPE_CHECKING:
 RELATION_LINE_RE = re.compile(
     r"^\s*-\s+\[([^\]]+)\]\s+--([^->\s][^->]*?)-->\s+\[([^\]]+)\]"
     r"(?:\s+\((\d{4}-\d{2}-\d{2})\))?"
-    r"(?:\s+[—–-]\s+\"?(.*?)\"?)?\s*$"
+    r"(?:\s+[-\u2013\u2014]\s+\"?(.*?)\"?)?\s*$"
 )
 
 
@@ -63,7 +63,7 @@ def _format_relation_line(
     date_str = datetime.now().strftime("%Y-%m-%d")
     line = f"- [{subject}] --{predicate}--> [{object_}] ({date_str})"
     if note:
-        line += f' — "{note}"'
+        line += f' - "{note}"'
     return line
 
 
@@ -103,7 +103,7 @@ def _find_semantic_duplicate(
     new_text = f"{subject} {predicate} {object_}"
     new_vec = provider.embed([new_text])[0]
 
-    # NullEmbeddingProvider returns [] — skip semantic dedup
+    # NullEmbeddingProvider returns [] - skip semantic dedup
     if not new_vec:
         return None
 
@@ -202,7 +202,7 @@ def add_relation(
         )
 
     # --- Semantic deduplication (only when a real provider is available) ---
-    # Skip dedup when superseding — we explicitly want to replace old triples.
+    # Skip dedup when superseding - we explicitly want to replace old triples.
     if not supersedes and provider is not None:
         duplicate = _find_semantic_duplicate(
             index, provider, subject, predicate, object_, dedup_threshold
@@ -290,7 +290,7 @@ def format_relations_for_context(relations: list[dict]) -> str:
     for r in relations:
         line = f"- [{r['subject']}] --{r['predicate']}--> [{r['object']}]"
         if r.get("note"):
-            line += f" — {r['note']}"
+            line += f" - {r['note']}"
         lines.append(line)
     return "\n".join(lines)
 

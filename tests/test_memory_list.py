@@ -14,7 +14,7 @@ class TestMemoryListFiles:
         assert r["count"] == len(r["files"])
 
     def test_list_after_long_term_write_shows_memory_md(self, session):
-        session.execute_tool("memory_write", content="Something.", tier="long_term")
+        session.execute_tool("memory_write", file="MEMORY.md", content="Something.")
         r = session.execute_tool("memory_list")
         files = [entry["file"] for entry in r["files"]]
         assert any("MEMORY.md" in f for f in files)
@@ -28,14 +28,14 @@ class TestMemoryListFiles:
         assert any("RELATIONS.md" in f for f in files)
 
     def test_list_file_entries_have_line_count(self, session):
-        session.execute_tool("memory_write", content="Entry 1.", tier="long_term")
+        session.execute_tool("memory_write", file="MEMORY.md", content="Entry 1.")
         r = session.execute_tool("memory_list")
         for entry in r["files"]:
             assert "line_count" in entry
             assert isinstance(entry["line_count"], int)
 
     def test_list_target_files_explicit(self, session):
-        session.execute_tool("memory_write", content="Explicit target test.", tier="long_term")
+        session.execute_tool("memory_write", file="MEMORY.md", content="Explicit target test.")
         r = session.execute_tool("memory_list", target="files")
         assert r["status"] == "ok"
         assert "files" in r
@@ -49,14 +49,14 @@ class TestMemoryListDaily:
         assert r["daily_files"] == []
 
     def test_list_daily_after_write_shows_file(self, session):
-        session.execute_tool("memory_write", content="Daily note.", tier="daily")
+        session.execute_tool("memory_write", file="daily", content="Daily note.")
         r = session.execute_tool("memory_list", target="daily")
         assert r["status"] == "ok"
         assert r["count"] >= 1
         assert len(r["daily_files"]) >= 1
 
     def test_list_daily_filenames_are_date_formatted(self, session):
-        session.execute_tool("memory_write", content="Date format test.", tier="daily")
+        session.execute_tool("memory_write", file="daily", content="Date format test.")
         r = session.execute_tool("memory_list", target="daily")
         for name in r["daily_files"]:
             # Expect YYYY-MM-DD.md
@@ -68,7 +68,7 @@ class TestMemoryListDaily:
 class TestMemoryListFilePeek:
     def test_peek_specific_file(self, session):
         for i in range(5):
-            session.execute_tool("memory_write", content=f"Peek line {i}.", tier="long_term")
+            session.execute_tool("memory_write", file="MEMORY.md", content=f"Peek line {i}.")
 
         r = session.execute_tool("memory_list", file="MEMORY.md")
         assert r["status"] == "ok"
@@ -78,7 +78,7 @@ class TestMemoryListFilePeek:
 
     def test_peek_preview_max_20_lines(self, session):
         for i in range(30):
-            session.execute_tool("memory_write", content=f"Preview line {i}.", tier="long_term")
+            session.execute_tool("memory_write", file="MEMORY.md", content=f"Preview line {i}.")
 
         r = session.execute_tool("memory_list", file="MEMORY.md")
         assert len(r["preview"]) <= 20

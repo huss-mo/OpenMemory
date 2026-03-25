@@ -1,5 +1,5 @@
-"""
-groundmemory configuration — driven by Pydantic Settings.
+﻿"""
+groundmemory configuration - driven by Pydantic Settings.
 
 Priority (highest → lowest):
   1. Constructor kwargs (programmatic overrides)
@@ -50,8 +50,8 @@ def _env_file_paths() -> tuple[str, str]:
     """Return the ordered .env search paths as strings for pydantic-settings.
 
     Search order (first match wins at the pydantic-settings level):
-      1. $groundmemory_ROOT_DIR/.env  — global user/Docker config
-      2. ./.env                     — cwd override (dev / Docker compose injection)
+      1. $groundmemory_ROOT_DIR/.env  - global user/Docker config
+      2. ./.env                     - cwd override (dev / Docker compose injection)
     """
     root = _get_root_dir()
     return (str(root / ".env"), ".env")
@@ -74,7 +74,7 @@ def _seed_example_config() -> None:
     try:
         root.mkdir(parents=True, exist_ok=True)
     except Exception:
-        return  # Non-fatal — can't create root dir
+        return  # Non-fatal - can't create root dir
 
     dest = root / "groundmemory.yaml.example"
     if not dest.exists():
@@ -82,15 +82,15 @@ def _seed_example_config() -> None:
             ref = pkg_resources.files("groundmemory.config").joinpath("groundmemory.yaml.example")
             dest.write_bytes(ref.read_bytes())
         except Exception:
-            pass  # Non-fatal — missing example file should never crash the server
+            pass  # Non-fatal - missing example file should never crash the server
 
 
 def _load_yaml_config(filename: str = "groundmemory.yaml") -> dict[str, Any]:
     """Search for *filename* in root_dir then cwd; return parsed dict or {}.
 
     Search order (first match wins):
-      1. $groundmemory_ROOT_DIR/<filename>  — global user config (~/.groundmemory/ or /data/ in Docker)
-      2. ./<filename>                     — cwd override (dev mode / project-level)
+      1. $groundmemory_ROOT_DIR/<filename>  - global user config (~/.groundmemory/ or /data/ in Docker)
+      2. ./<filename>                     - cwd override (dev mode / project-level)
     """
     root = _get_root_dir()
     candidates = [root / filename, Path.cwd() / filename]
@@ -344,6 +344,10 @@ class groundmemoryConfig(BaseSettings):
         groundmemory_EMBEDDING__BASE_URL=http://localhost:11434/v1
         groundmemory_SEARCH__TOP_K=10
 
+    Tool-set flags (apply to both MCP server and Python API):
+        GROUNDMEMORY_EXPOSE_MEMORY_LIST=true  - expose memory_list tool
+        GROUNDMEMORY_DISPATCHER_MODE=true     - replace all tools with single memory_tool dispatcher
+
     See groundmemory.yaml.example for the full YAML reference.
     """
 
@@ -359,6 +363,17 @@ class groundmemoryConfig(BaseSettings):
 
     # Workspace name (subdirectory under root_dir/<workspace>/<session>)
     workspace: str = "default"
+
+    # Expose the memory_list tool to models (disabled by default to save tokens).
+    # Applies to both the MCP server and the Python API.
+    # Env var: GROUNDMEMORY_EXPOSE_MEMORY_LIST=true
+    expose_memory_list: bool = False
+
+    # Replace all individual tools with a single memory_tool dispatcher
+    # (maximum token efficiency - one tool with one-liner descriptions).
+    # Applies to both the MCP server and the Python API.
+    # Env var: GROUNDMEMORY_DISPATCHER_MODE=true
+    dispatcher_mode: bool = False
 
     embedding: EmbeddingConfig = Field(default_factory=EmbeddingConfig)
     chunking: ChunkingConfig = Field(default_factory=ChunkingConfig)
@@ -393,6 +408,8 @@ class groundmemoryConfig(BaseSettings):
         # Build nested sub-configs from YAML data, then let env vars win.
         # pydantic-settings gives init kwargs HIGHER priority than env vars,
         # so we must NOT pass a YAML field as a kwarg if an env var is set for it.
+        expose_memory_list = data.pop("expose_memory_list", None)
+        dispatcher_mode = data.pop("dispatcher_mode", None)
         embedding_data = data.pop("embedding", {})
         chunking_data = data.pop("chunking", {})
         search_data = data.pop("search", {})
@@ -419,6 +436,12 @@ class groundmemoryConfig(BaseSettings):
         bootstrap = BootstrapConfig(**_filter_env_overrides(bootstrap_data, "GROUNDMEMORY_BOOTSTRAP__"))
         mcp = MCPConfig(**_filter_env_overrides(mcp_data, "GROUNDMEMORY_MCP__"))
 
+        extra: dict = {}
+        if expose_memory_list is not None and not os.environ.get("GROUNDMEMORY_EXPOSE_MEMORY_LIST"):
+            extra["expose_memory_list"] = expose_memory_list
+        if dispatcher_mode is not None and not os.environ.get("GROUNDMEMORY_DISPATCHER_MODE"):
+            extra["dispatcher_mode"] = dispatcher_mode
+
         return cls(
             embedding=embedding,
             chunking=chunking,
@@ -427,6 +450,7 @@ class groundmemoryConfig(BaseSettings):
             compaction=compaction,
             bootstrap=bootstrap,
             mcp=mcp,
+            **extra,
             **data,
         )
 
@@ -434,7 +458,7 @@ class groundmemoryConfig(BaseSettings):
     def auto(cls) -> "groundmemoryConfig":
         """Auto-load: YAML file if present, otherwise pure env/defaults.
 
-        This is the recommended factory for most use cases — it respects the
+        This is the recommended factory for most use cases - it respects the
         full priority chain without requiring you to specify a file path.
         """
         yaml_data = _load_yaml_config()

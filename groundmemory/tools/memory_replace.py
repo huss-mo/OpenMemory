@@ -1,4 +1,4 @@
-"""memory_replace_text and memory_replace_lines tools — in-place edits to memory files."""
+﻿"""memory_replace_text and memory_replace_lines tools - in-place edits to memory files."""
 from __future__ import annotations
 
 from groundmemory.tools.base import ok, err, is_immutable, _IMMUTABLE_MSG, sync_after_edit

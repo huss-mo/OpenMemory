@@ -1,16 +1,16 @@
-# groundmemory — YAML Configuration Reference
+# groundmemory - YAML Configuration Reference
 # Copy this file to groundmemory.yaml in your config directory and edit as needed.
 #
 # Config file locations (first match wins):
-#   ~/.groundmemory/groundmemory.yaml   ← pip / editable installs (recommended)
-#   ./data/groundmemory.yaml          ← Docker (host path, mounted at /data)
-#   ./groundmemory.yaml               ← cwd override / dev mode
+#   ~/.groundmemory/groundmemory.yaml   <- pip / editable installs (recommended)
+#   ./data/groundmemory.yaml          <- Docker (host path, mounted at /data)
+#   ./groundmemory.yaml               <- cwd override / dev mode
 #
 # Priority order (highest wins):
 #   1. Constructor kwargs (programmatic)
 #   2. Environment variables  (groundmemory_* with __ nesting)
 #   3. $groundmemory_ROOT_DIR/.env or ./.env
-#   4. $groundmemory_ROOT_DIR/groundmemory.yaml or ./groundmemory.yaml  ← this file
+#   4. $groundmemory_ROOT_DIR/groundmemory.yaml or ./groundmemory.yaml  <- this file
 #   5. Built-in defaults
 #
 # Usage in code:
@@ -34,9 +34,9 @@
 # ---------------------------------------------------------------------------
 embedding:
   # provider options:
-  #   "none"   — BM25 keyword search only (no vector search, no GPU needed) [default]
-  #   "openai" — OpenAI-compatible HTTP API (no extra install required)
-  #   "local"  — sentence-transformers (requires: pip install groundmemory[local])
+  #   "none"   - BM25 keyword search only (no vector search, no GPU needed) [default]
+  #   "openai" - OpenAI-compatible HTTP API (no extra install required)
+  #   "local"  - sentence-transformers (requires: pip install groundmemory[local])
   provider: none
 
   # --- sentence-transformers (provider: local) ---
@@ -82,7 +82,7 @@ search:
   # path (vector + keyword) before merging and re-ranking
   candidate_multiplier: 4
 
-  # Weight for vector similarity score (0.0–1.0)
+  # Weight for vector similarity score (0.0-1.0)
   # keyword_weight = 1.0 - vector_weight
   # Set to 0.0 for pure BM25 (useful when provider: none)
   vector_weight: 0.7
@@ -99,14 +99,14 @@ search:
 # Text chunking
 # ---------------------------------------------------------------------------
 chunking:
-  # Target chunk size in approximate tokens (1 token ≈ 4 chars)
+  # Target chunk size in approximate tokens (1 token ~ 4 chars)
   tokens: 400
 
   # Overlap between consecutive chunks in approximate tokens
   overlap: 80
 
 # ---------------------------------------------------------------------------
-# Bootstrap — system-prompt injection at session start
+# Bootstrap - system-prompt injection at session start
 # ---------------------------------------------------------------------------
 bootstrap:
   # Maximum characters per file before a truncation warning is appended
@@ -129,12 +129,12 @@ bootstrap:
   # true reconciles it from the file at the start of every session so that changes
   # are always reflected.
   #
-  # Leave disabled (false) in normal usage — the agent keeps both stores in sync
+  # Leave disabled (false) in normal usage - the agent keeps both stores in sync
   # automatically via memory_relate, memory_replace_*, and memory_delete.
   sync_relations_on_bootstrap: false
 
 # ---------------------------------------------------------------------------
-# Compaction — pre-context-window-flush hooks
+# Compaction - pre-context-window-flush hooks
 # ---------------------------------------------------------------------------
 #
 # When token usage crosses the flush threshold the adapter injects a message
@@ -151,7 +151,7 @@ compaction:
   context_window_tokens: 128000
 
   # Flush when this many tokens have been *consumed* in the context window
-  # (counted from zero — this is token usage, not tokens remaining).
+  # (counted from zero - this is token usage, not tokens remaining).
   soft_threshold_tokens: 64000
 
   # Always keep this many tokens free for the model's reply.
@@ -161,6 +161,19 @@ compaction:
   # Messages injected at the flush turn (override if you need custom wording)
   # system_prompt: "Session nearing compaction. Store durable memories now."
   # user_prompt: "Review the conversation and write lasting facts to memory using memory_write. Reply DONE when finished."
+
+# ---------------------------------------------------------------------------
+# Optional tools
+# ---------------------------------------------------------------------------
+
+# Expose the memory_list tool (lists workspace files with sizes and line counts).
+# Disabled by default - enable only if your agent/client needs it.
+# expose_memory_list: false
+
+# Enable dispatcher mode: replaces all four core tools with a single memory_tool
+# dispatcher. Useful for clients/agents that handle a unified action+args interface.
+# In dispatcher mode, only memory_tool is registered (not the four core tools).
+# dispatcher_mode: false
 
 # ---------------------------------------------------------------------------
 # MCP server (groundmemory-mcp command)

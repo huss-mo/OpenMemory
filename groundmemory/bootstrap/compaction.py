@@ -1,5 +1,5 @@
-"""
-Compaction helpers — detect when the context window is nearly full and
+﻿"""
+Compaction helpers - detect when the context window is nearly full and
 provide prompts that instruct the agent to flush important information
 to memory before the session is compacted.
 """
@@ -21,7 +21,7 @@ the memory_write tool. Focus on:
 3. Updated user preferences or project state.
 4. Anything the user would want remembered in a future session.
 
-Write concisely — prefer bullet points. Do NOT include information that is \
+Write concisely - prefer bullet points. Do NOT include information that is \
 already recorded in previous memory entries unless it has changed.\
 """
 
@@ -53,7 +53,7 @@ def should_flush(
     The flush fires when token usage reaches the lower of two limits::
 
         soft limit : cfg.soft_threshold_tokens
-                     (absolute usage ceiling — fire no later than this)
+                     (absolute usage ceiling - fire no later than this)
         hard limit : context_window - cfg.reserve_floor_tokens
                      (always keep this many tokens free for the model's reply)
     """

@@ -1,4 +1,4 @@
-"""memory_list tool — list memory files or daily log entries."""
+﻿"""memory_list tool - list memory files or daily log entries."""
 from __future__ import annotations
 
 from groundmemory.tools.base import ok, err

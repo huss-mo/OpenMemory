@@ -1,4 +1,4 @@
-"""MemorySession — central orchestrator for an groundmemory workspace instance."""
+﻿"""MemorySession - central orchestrator for an groundmemory workspace instance."""
 from __future__ import annotations
 
 import logging
@@ -10,7 +10,7 @@ from groundmemory.core.workspace import Workspace
 from groundmemory.core.index import MemoryIndex
 from groundmemory.core.embeddings import make_provider, EmbeddingProvider
 from groundmemory.core.sync import sync_workspace
-from groundmemory.tools import TOOL_RUNNERS
+from groundmemory.tools import build_tool_registry
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +40,7 @@ class MemorySession:
         self.index = index
         self.provider = provider
         self.config = config
+        _, self._tool_runners, self._tool_schemas = build_tool_registry(config)
 
     # ------------------------------------------------------------------
     # Factory
@@ -169,13 +170,13 @@ class MemorySession:
         dict
             ``{"ok": True, "data": ...}`` or ``{"ok": False, "error": ...}``
         """
-        runner = TOOL_RUNNERS.get(tool_name)
+        runner = self._tool_runners.get(tool_name)
         if runner is None:
             from groundmemory.tools.base import err
 
             return err(
                 f"Unknown tool '{tool_name}'. "
-                f"Available: {list(TOOL_RUNNERS.keys())}"
+                f"Available: {list(self._tool_runners.keys())}"
             )
 
         try:

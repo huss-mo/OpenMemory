@@ -1,5 +1,5 @@
-"""
-Bootstrap injector — builds the system-prompt string that loads an agent's
+﻿"""
+Bootstrap injector - builds the system-prompt string that loads an agent's
 long-term memory context at the start of a session.
 
 Design goals
@@ -43,7 +43,7 @@ def _read_capped(path: Path, max_chars: int) -> tuple[str, bool]:
 
 def _section(title: str, body: str, truncated: bool = False) -> str:
     """Wrap *body* in a labelled Markdown block."""
-    marker = " [TRUNCATED — use memory_get to read the rest]" if truncated else ""
+    marker = " [TRUNCATED - use memory_get to read the rest]" if truncated else ""
     return f"### {title}{marker}\n\n{body}\n"
 
 

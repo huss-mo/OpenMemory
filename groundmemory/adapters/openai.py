@@ -1,5 +1,5 @@
-"""
-OpenAI adapter — converts groundmemory tool schemas into the format expected by
+﻿"""
+OpenAI adapter - converts groundmemory tool schemas into the format expected by
 the OpenAI Chat Completions ``tools`` parameter (function-calling API).
 
 Usage
@@ -168,7 +168,7 @@ def run_agent_loop(
             if should_flush(used, compaction_cfg):
                 prompts = get_compaction_prompts(compaction_cfg)
                 messages.append({"role": "user", "content": prompts["user"]})
-                # One dedicated flush turn — let the model write to memory
+                # One dedicated flush turn - let the model write to memory
                 flush_response = client.chat.completions.create(
                     model=model,
                     messages=[{"role": "system", "content": prompts["system"]}] + messages,

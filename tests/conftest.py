@@ -1,4 +1,4 @@
-"""
+﻿"""
 Shared pytest fixtures for groundmemory tests.
 
 All tests use provider="none" (BM25-only, no network calls) by default.
@@ -25,6 +25,7 @@ def _make_session(tmp_path, provider="none", **search_kwargs) -> MemorySession:
         workspace="test",
         embedding=EmbeddingConfig(provider=provider),
         search=SearchConfig(**search_kwargs),
+        expose_memory_list=True,
     )
     name = uuid.uuid4().hex[:8]
     return MemorySession.create(name, config=cfg)
@@ -40,7 +41,7 @@ def session(tmp_path):
 
 @pytest.fixture()
 def session_factory(tmp_path):
-    """Factory fixture — call it to get additional isolated sessions."""
+    """Factory fixture - call it to get additional isolated sessions."""
     sessions = []
 
     def _factory(provider="none", **search_kwargs):

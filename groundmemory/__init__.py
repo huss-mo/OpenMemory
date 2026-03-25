@@ -1,5 +1,5 @@
-"""
-groundmemory — local-first, model-agnostic persistent memory for AI agents.
+﻿"""
+groundmemory - local-first, model-agnostic persistent memory for AI agents.
 
 Quick start
 -----------

@@ -1,4 +1,4 @@
-"""Tests for all new relation-sync functionality (5-point plan)."""
+﻿"""Tests for all new relation-sync functionality (5-point plan)."""
 from __future__ import annotations
 
 import uuid
@@ -303,35 +303,35 @@ class TestMemoryReplaceTextRelations:
     def test_valid_returns_ok(self, session):
         self._seed(session)
         r = session.execute_tool(
-            "memory_replace_text", file="RELATIONS.md", search=self._SEARCH, replacement=self._VALID_REPL
+            "memory_write", file="RELATIONS.md", search=self._SEARCH, content=self._VALID_REPL
         )
         assert r["status"] == "ok"
 
     def test_valid_format_confirmed(self, session):
         self._seed(session)
         r = session.execute_tool(
-            "memory_replace_text", file="RELATIONS.md", search=self._SEARCH, replacement=self._VALID_REPL
+            "memory_write", file="RELATIONS.md", search=self._SEARCH, content=self._VALID_REPL
         )
         assert r.get("relations_format") == "confirmed"
 
     def test_valid_format_reminder_present(self, session):
         self._seed(session)
         r = session.execute_tool(
-            "memory_replace_text", file="RELATIONS.md", search=self._SEARCH, replacement=self._VALID_REPL
+            "memory_write", file="RELATIONS.md", search=self._SEARCH, content=self._VALID_REPL
         )
         assert "format_reminder" in r
 
     def test_valid_relations_synced_present(self, session):
         self._seed(session)
         r = session.execute_tool(
-            "memory_replace_text", file="RELATIONS.md", search=self._SEARCH, replacement=self._VALID_REPL
+            "memory_write", file="RELATIONS.md", search=self._SEARCH, content=self._VALID_REPL
         )
         assert "relations_synced" in r
 
     def test_invalid_returns_error(self, session):
         self._seed(session)
         r = session.execute_tool(
-            "memory_replace_text", file="RELATIONS.md", search=self._SEARCH, replacement=self._INVALID_REPL
+            "memory_write", file="RELATIONS.md", search=self._SEARCH, content=self._INVALID_REPL
         )
         assert r["status"] == "error"
         assert "format" in r["message"].lower()
@@ -340,14 +340,14 @@ class TestMemoryReplaceTextRelations:
         self._seed(session)
         original = session.workspace.relations_file.read_text(encoding="utf-8")
         session.execute_tool(
-            "memory_replace_text", file="RELATIONS.md", search=self._SEARCH, replacement=self._INVALID_REPL
+            "memory_write", file="RELATIONS.md", search=self._SEARCH, content=self._INVALID_REPL
         )
         assert session.workspace.relations_file.read_text(encoding="utf-8") == original
 
     def test_valid_file_content_updated(self, session):
         self._seed(session)
         session.execute_tool(
-            "memory_replace_text", file="RELATIONS.md", search=self._SEARCH, replacement=self._VALID_REPL
+            "memory_write", file="RELATIONS.md", search=self._SEARCH, content=self._VALID_REPL
         )
         content = session.workspace.relations_file.read_text(encoding="utf-8")
         assert "2026-04-01" in content
@@ -373,35 +373,35 @@ class TestMemoryReplaceLinesRelations:
     def test_valid_returns_ok(self, session):
         self._seed(session)
         r = session.execute_tool(
-            "memory_replace_lines", file="RELATIONS.md", start_line=1, end_line=1, replacement=self._VALID_LINE
+            "memory_write", file="RELATIONS.md", start_line=1, end_line=1, content=self._VALID_LINE
         )
         assert r["status"] == "ok"
 
     def test_valid_format_confirmed(self, session):
         self._seed(session)
         r = session.execute_tool(
-            "memory_replace_lines", file="RELATIONS.md", start_line=1, end_line=1, replacement=self._VALID_LINE
+            "memory_write", file="RELATIONS.md", start_line=1, end_line=1, content=self._VALID_LINE
         )
         assert r.get("relations_format") == "confirmed"
 
     def test_valid_format_reminder_present(self, session):
         self._seed(session)
         r = session.execute_tool(
-            "memory_replace_lines", file="RELATIONS.md", start_line=1, end_line=1, replacement=self._VALID_LINE
+            "memory_write", file="RELATIONS.md", start_line=1, end_line=1, content=self._VALID_LINE
         )
         assert "format_reminder" in r
 
     def test_valid_relations_synced_present(self, session):
         self._seed(session)
         r = session.execute_tool(
-            "memory_replace_lines", file="RELATIONS.md", start_line=1, end_line=1, replacement=self._VALID_LINE
+            "memory_write", file="RELATIONS.md", start_line=1, end_line=1, content=self._VALID_LINE
         )
         assert "relations_synced" in r
 
     def test_invalid_returns_error(self, session):
         self._seed(session)
         r = session.execute_tool(
-            "memory_replace_lines", file="RELATIONS.md", start_line=1, end_line=1, replacement=self._INVALID_LINE
+            "memory_write", file="RELATIONS.md", start_line=1, end_line=1, content=self._INVALID_LINE
         )
         assert r["status"] == "error"
         assert "format" in r["message"].lower()
@@ -410,14 +410,14 @@ class TestMemoryReplaceLinesRelations:
         self._seed(session)
         original = session.workspace.relations_file.read_text(encoding="utf-8")
         session.execute_tool(
-            "memory_replace_lines", file="RELATIONS.md", start_line=1, end_line=1, replacement=self._INVALID_LINE
+            "memory_write", file="RELATIONS.md", start_line=1, end_line=1, content=self._INVALID_LINE
         )
         assert session.workspace.relations_file.read_text(encoding="utf-8") == original
 
     def test_valid_file_content_updated(self, session):
         self._seed(session)
         session.execute_tool(
-            "memory_replace_lines", file="RELATIONS.md", start_line=1, end_line=1, replacement=self._VALID_LINE
+            "memory_write", file="RELATIONS.md", start_line=1, end_line=1, content=self._VALID_LINE
         )
         content = session.workspace.relations_file.read_text(encoding="utf-8")
         assert "2026-04-01" in content
@@ -439,48 +439,49 @@ class TestMemoryDeleteRelations:
 
     def test_delete_returns_ok(self, session):
         self._seed(session)
-        r = session.execute_tool("memory_delete", file="RELATIONS.md", start_line=1, end_line=1)
+        r = session.execute_tool("memory_write", file="RELATIONS.md", start_line=1, end_line=1, content="")
         assert r["status"] == "ok"
 
     def test_delete_removes_sqlite_row(self, session):
         self._seed(session)
         assert len(session.index.get_all_relations()) == 2
 
-        session.execute_tool("memory_delete", file="RELATIONS.md", start_line=1, end_line=1)
+        session.execute_tool("memory_write", file="RELATIONS.md", start_line=1, end_line=1, content="")
         rows = session.index.get_all_relations()
         assert len(rows) == 1
         assert rows[0]["subject"] == "Bob"
 
     def test_delete_returns_relations_deleted_list(self, session):
         self._seed(session)
-        r = session.execute_tool("memory_delete", file="RELATIONS.md", start_line=1, end_line=1)
+        r = session.execute_tool("memory_write", file="RELATIONS.md", start_line=1, end_line=1, content="")
         assert "relations_deleted" in r
         assert len(r["relations_deleted"]) == 1
         assert "Alice" in r["relations_deleted"][0]
 
     def test_delete_both_lines_removes_both_rows(self, session):
         self._seed(session)
-        session.execute_tool("memory_delete", file="RELATIONS.md", start_line=1, end_line=2)
+        session.execute_tool("memory_write", file="RELATIONS.md", start_line=1, end_line=2, content="")
         assert len(session.index.get_all_relations()) == 0
 
     def test_delete_non_relation_line_no_relations_deleted_key(self, session):
         """Deleting a header/blank line should not add relations_deleted key."""
         _write_relations(session, "# Relations\n- [Alice] --leads--> [Team]\n")
         sync_relations_from_file(session.workspace.relations_file, session.index)
-        r = session.execute_tool("memory_delete", file="RELATIONS.md", start_line=1, end_line=1)
+        r = session.execute_tool("memory_write", file="RELATIONS.md", start_line=1, end_line=1, content="")
         assert r["status"] == "ok"
         # No relation triple in the deleted slice, so relations_deleted should be absent or empty
         assert r.get("relations_deleted", []) == []
 
-    def test_delete_leaves_file_tombstone(self, session):
+    def test_delete_leaves_no_tombstone(self, session):
+        """Hard-delete leaves no HTML comment tombstone."""
         self._seed(session)
-        session.execute_tool("memory_delete", file="RELATIONS.md", start_line=1, end_line=1)
+        session.execute_tool("memory_write", file="RELATIONS.md", start_line=1, end_line=1, content="")
         content = session.workspace.relations_file.read_text(encoding="utf-8")
-        assert "<!-- deleted" in content
+        assert "<!-- deleted" not in content
 
     def test_delete_preserves_other_lines(self, session):
         self._seed(session)
-        session.execute_tool("memory_delete", file="RELATIONS.md", start_line=1, end_line=1)
+        session.execute_tool("memory_write", file="RELATIONS.md", start_line=1, end_line=1, content="")
         content = session.workspace.relations_file.read_text(encoding="utf-8")
         assert "Bob" in content
 
@@ -509,7 +510,7 @@ class TestBootstrapSyncRelations:
         s = _make_session(tmp_path, sync_relations_on_bootstrap=True)
         try:
             _write_relations(s, "- [Zara] --owns--> [Laptop]\n")
-            # SQLite is empty at this point — the line was written directly
+            # SQLite is empty at this point - the line was written directly
             assert len(s.index.get_all_relations()) == 0
 
             # Step 2: bootstrap() should trigger the sync
@@ -523,7 +524,7 @@ class TestBootstrapSyncRelations:
     def test_bootstrap_with_sync_false_does_not_populate_sqlite(self, tmp_path):
         """
         When sync_relations_on_bootstrap=False (default), bootstrap() must NOT
-        reconcile SQLite — manually written RELATIONS.md lines stay out of SQLite.
+        reconcile SQLite - manually written RELATIONS.md lines stay out of SQLite.
         """
         s = _make_session(tmp_path, sync_relations_on_bootstrap=False)
         try:
@@ -630,7 +631,7 @@ class TestSyncTriggerRelations:
 
 
 # ===========================================================================
-# 10. BootstrapConfig.sync_relations_on_bootstrap — config loading
+# 10. BootstrapConfig.sync_relations_on_bootstrap - config loading
 # ===========================================================================
 
 

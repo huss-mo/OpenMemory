@@ -1,4 +1,4 @@
-"""
+﻿"""
 examples/anthropic_agent.py
 ===========================
 Minimal example of an Anthropic Claude-powered agent that uses groundmemory to
@@ -72,7 +72,7 @@ while True:
     approx_tokens = sum(len(str(m.get("content", ""))) // 4 for m in messages)
     if session.should_compact(approx_tokens, 200_000):
         prompts = session.compaction_prompts()
-        print("[groundmemory] Context window approaching limit — triggering memory flush.")
+        print("[groundmemory] Context window approaching limit - triggering memory flush.")
         # Inject a compact request as a user turn (Anthropic doesn't support system mid-stream)
         messages.append({"role": "user", "content": prompts["user"]})
 

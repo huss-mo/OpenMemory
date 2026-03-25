@@ -1,4 +1,4 @@
-"""memory_relate tool — record a named relationship between two entities."""
+﻿"""memory_relate tool - record a named relationship between two entities."""
 from __future__ import annotations
 
 from groundmemory.tools.base import ok, err
@@ -13,7 +13,7 @@ SCHEMA = {
         "Before calling this tool, use memory_search to check whether a conflicting "
         "relation already exists.\n\n"
         "Set supersedes=True when the new relation REPLACES a prior one for the same "
-        "subject+predicate — for example, when someone changes jobs, moves cities, or "
+        "subject+predicate - for example, when someone changes jobs, moves cities, or "
         "changes teams. This removes all prior (subject, predicate) triples before "
         "writing the new one. Do NOT set supersedes=True when multiple objects can be "
         "valid simultaneously (e.g. a person can attend multiple meetups)."

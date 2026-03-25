@@ -1,4 +1,4 @@
-<img src="https://raw.githubusercontent.com/huss-mo/GroundMemory/master/_assets/icon.png" alt="om logo" width="140">
+﻿<img src="https://raw.githubusercontent.com/huss-mo/GroundMemory/master/_assets/icon.png" alt="om logo" width="140">
 
 # GroundMemory
 
@@ -6,7 +6,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![Unit Tests](https://github.com/huss-mo/GroundMemory/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/huss-mo/GroundMemory/actions/workflows/unit-tests.yml)
-[![Test Suite](https://img.shields.io/badge/test%20suite-330%20tests-blue.svg)](#running-the-test-suite)
+[![Test Suite](https://img.shields.io/badge/test%20suite-380%20tests-blue.svg)](#running-the-test-suite)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![GitHub repo size](https://img.shields.io/github/repo-size/huss-mo/GroundMemory)
 ![GitHub language count](https://img.shields.io/github/languages/count/huss-mo/GroundMemory)
@@ -103,17 +103,17 @@ Comparison reflects publicly documented features as of MAR-2026. Submit a PR if 
 
 | Feature | GroundMemory | Mem0 | Letta | memsearch | Zep |
 |---|:---:|:---:|:---:|:---:|:---:|
-| Zero-setup (no API key, no GPU) | ✅ | — | — | — | — |
-| Local-first / offline | ✅ | — | — | Partial¹ | — |
-| Human-readable Markdown memory | ✅ | — | — | ✅ | — |
-| Structured memory tiers | ✅ | ✅² | ✅³ | — | — |
-| Hybrid BM25 + vector search | ✅ | — | — | ✅ | ✅ |
-| Entity relation graph | ✅ | ✅ | — | — | ✅ |
-| MCP-native server | ✅ | Partial⁴ | Partial⁵ | — | — |
-| Compaction hooks | ✅ | — | ✅ | — | — |
-| Temporal knowledge graph | —⁶ | — | — | — | ✅ |
-| Full agent framework | — | — | ✅ | — | — |
-| Managed cloud service | — | ✅ | ✅ | — | ✅ |
+| Zero-setup (no API key, no GPU) | ✅ | - | - | - | - |
+| Local-first / offline | ✅ | - | - | Partial¹ | - |
+| Human-readable Markdown memory | ✅ | - | - | ✅ | - |
+| Structured memory tiers | ✅ | ✅² | ✅³ | - | - |
+| Hybrid BM25 + vector search | ✅ | - | - | ✅ | ✅ |
+| Entity relation graph | ✅ | ✅ | - | - | ✅ |
+| MCP-native server | ✅ | Partial⁴ | Partial⁵ | - | - |
+| Compaction hooks | ✅ | - | ✅ | - | - |
+| Temporal knowledge graph | -⁶ | - | - | - | ✅ |
+| Full agent framework | - | - | ✅ | - | - |
+| Managed cloud service | - | ✅ | ✅ | - | ✅ |
 
 ¹ memsearch supports local ONNX embeddings + Milvus Lite, but requires initial model download </br>
 ² Mem0 organizes memory into Conversation, Session, User, and Organizational layers </br>
@@ -128,11 +128,11 @@ Comparison reflects publicly documented features as of MAR-2026. Submit a PR if 
 
 GroundMemory exposes 9 tools via MCP and the Python API: `memory_bootstrap`, `memory_write`, `memory_search`, `memory_get`, `memory_list`, `memory_delete`, `memory_replace_text`, `memory_replace_lines`, and `memory_relate`.
 
-`MEMORY.md` and all `daily/*.md` files are **append-only** — `memory_delete`, `memory_replace_text`, and `memory_replace_lines` enforce this and will reject edits to those files. Only `USER.md`, `AGENTS.md`, and `RELATIONS.md` are mutable.
+`MEMORY.md` and all `daily/*.md` files are **append-only** - `memory_delete`, `memory_replace_text`, and `memory_replace_lines` enforce this and will reject edits to those files. Only `USER.md`, `AGENTS.md`, and `RELATIONS.md` are mutable.
 
 **When using the MCP server**, instruct your agent to call `memory_bootstrap` at the start of every session before doing anything else. This loads the full memory context (MEMORY.md, USER.md, AGENTS.md, RELATIONS.md, daily logs) into the conversation. Clients that support the MCP Prompts primitive (Cline, Claude Desktop) can instead use the `memory_bootstrap_prompt` prompt from their Prompts panel.
 
-**When using the Python API**, call `session.bootstrap()` and pass the result as your system prompt — no tool call is needed.
+**When using the Python API**, call `session.bootstrap()` and pass the result as your system prompt - no tool call is needed.
 
 For the full tools reference including parameters, tiers, and source filters, see [DOCS.md - Tools Reference](DOCS.md#tools-reference).
 

@@ -1,4 +1,4 @@
-"""Core sub-package — low-level storage, indexing, search, and sync primitives."""
+﻿"""Core sub-package - low-level storage, indexing, search, and sync primitives."""
 from groundmemory.core import (
     workspace,
     storage,

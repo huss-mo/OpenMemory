@@ -1,20 +1,20 @@
-"""Unit tests for groundmemory/mcp_server.py.
+﻿"""Unit tests for groundmemory/mcp_server.py.
 
 Strategy
 --------
 All tests mock the underlying MemorySession so no filesystem or network I/O
 occurs. The focus is on:
 
-1. _unwrap() — success and error path
-2. _get_session() — lazy initialisation and singleton behaviour
-3. Each MCP tool wrapper — correct argument forwarding and return value
-4. Error propagation — tool layer errors surface as ValueError
+1. _unwrap() - success and error path
+2. _get_session() - lazy initialisation and singleton behaviour
+3. Each MCP tool wrapper - correct argument forwarding and return value
+4. Error propagation - tool layer errors surface as ValueError
+5. Config-gated tools - memory_list and memory_tool registration
 """
 from __future__ import annotations
 
-import importlib
 import json
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -34,16 +34,6 @@ def _ok(**extra) -> dict:
 def _err(msg: str = "something went wrong") -> dict:
     """Build a minimal error envelope matching base.err() output."""
     return {"status": "error", "message": msg}
-
-
-def _make_mock_session(**tool_returns):
-    """Return a MagicMock MemorySession whose execute_tool side_effect is configurable."""
-    session = MagicMock()
-    session.execute_tool.return_value = _ok()
-    for tool_name, retval in tool_returns.items():
-        # We'll use side_effect on a per-call basis when needed
-        pass
-    return session
 
 
 # ---------------------------------------------------------------------------
@@ -69,6 +59,18 @@ class TestMCPConfigDefaults:
 
         cfg = MCPConfig()
         assert cfg.host == "127.0.0.1"
+
+    def test_expose_memory_list_default_false(self):
+        from groundmemory.config import groundmemoryConfig
+
+        cfg = groundmemoryConfig()
+        assert cfg.expose_memory_list is False
+
+    def test_dispatcher_mode_default_false(self):
+        from groundmemory.config import groundmemoryConfig
+
+        cfg = groundmemoryConfig()
+        assert cfg.dispatcher_mode is False
 
 
 # ---------------------------------------------------------------------------
@@ -104,7 +106,7 @@ class TestUnwrap:
 
 
 # ---------------------------------------------------------------------------
-# _get_session — lazy init and singleton
+# _get_session - lazy init and singleton
 # ---------------------------------------------------------------------------
 
 
@@ -175,201 +177,159 @@ def mock_session():
 
 
 class TestMcpMemoryWrite:
-    def test_write_long_term_returns_json(self, mock_session):
+    def test_write_returns_json(self, mock_session):
         mock_session.execute_tool.return_value = _ok(file="MEMORY.md", chars_written=20)
-        out = mcp_mod.memory_write(content="Hello world.", tier="long_term")
+        out = mcp_mod.memory_write(content="Hello world.", file="MEMORY.md")
         parsed = json.loads(out)
         assert parsed["ok"] is True
         assert parsed["file"] == "MEMORY.md"
 
-    def test_write_daily_calls_correct_tier(self, mock_session):
-        mock_session.execute_tool.return_value = _ok(file="daily/2025-01-01.md")
-        mcp_mod.memory_write(content="Daily entry.", tier="daily")
-        mock_session.execute_tool.assert_called_once_with(
-            "memory_write", content="Daily entry.", tier="daily", tags=None
+    def test_write_default_file_is_memory_md(self, mock_session):
+        mcp_mod.memory_write(content="No file specified.")
+        args = mock_session.execute_tool.call_args
+        assert args.kwargs.get("file") == "MEMORY.md"
+
+    def test_write_with_search_param_forwarded(self, mock_session):
+        mock_session.execute_tool.return_value = _ok(mode="replace_text", replaced=True)
+        mcp_mod.memory_write(
+            file="USER.md",
+            search="old text",
+            content="new text",
         )
-
-    def test_write_default_tier_is_long_term(self, mock_session):
-        mcp_mod.memory_write(content="No tier specified.")
         args = mock_session.execute_tool.call_args
-        assert args.kwargs["tier"] == "long_term"
+        assert args.kwargs["search"] == "old text"
+        assert args.kwargs["content"] == "new text"
 
-    def test_write_with_tags_forwards_tags(self, mock_session):
-        mcp_mod.memory_write(content="Tagged.", tier="long_term", tags=["a", "b"])
+    def test_write_with_start_end_line_forwarded(self, mock_session):
+        mock_session.execute_tool.return_value = _ok(mode="replace_lines", replaced_lines="2-3")
+        mcp_mod.memory_write(
+            file="USER.md",
+            start_line=2,
+            end_line=3,
+            content="new content",
+        )
         args = mock_session.execute_tool.call_args
-        assert args.kwargs["tags"] == ["a", "b"]
+        assert args.kwargs["start_line"] == 2
+        assert args.kwargs["end_line"] == 3
+        assert args.kwargs["content"] == "new content"
+
+    def test_write_delete_mode_empty_content_forwarded(self, mock_session):
+        mock_session.execute_tool.return_value = _ok(mode="delete", lines_deleted=1)
+        mcp_mod.memory_write(
+            file="USER.md",
+            start_line=5,
+            end_line=5,
+            content="",
+        )
+        args = mock_session.execute_tool.call_args
+        assert args.kwargs["content"] == ""
+        assert args.kwargs["start_line"] == 5
 
     def test_write_error_propagates_as_value_error(self, mock_session):
         mock_session.execute_tool.return_value = _err("content is empty")
         with pytest.raises(ValueError, match="content is empty"):
             mcp_mod.memory_write(content="")
 
-    def test_write_none_tags_forwarded(self, mock_session):
-        mcp_mod.memory_write(content="No tags.")
+    def test_write_with_tags_forwards_tags(self, mock_session):
+        mcp_mod.memory_write(content="Tagged.", file="MEMORY.md", tags=["a", "b"])
         args = mock_session.execute_tool.call_args
-        assert args.kwargs["tags"] is None
+        assert args.kwargs["tags"] == ["a", "b"]
 
-
-# ---------------------------------------------------------------------------
-# memory_search
-# ---------------------------------------------------------------------------
-
-
-class TestMcpMemorySearch:
-    def test_search_returns_json(self, mock_session):
-        mock_session.execute_tool.return_value = _ok(results=[], count=0)
-        out = mcp_mod.memory_search(query="test query")
-        parsed = json.loads(out)
-        assert parsed["ok"] is True
-
-    def test_search_forwards_query(self, mock_session):
-        mcp_mod.memory_search(query="python async")
+    def test_write_none_tags_not_forwarded(self, mock_session):
+        mcp_mod.memory_write(content="No tags.", file="MEMORY.md")
         args = mock_session.execute_tool.call_args
-        assert args.kwargs["query"] == "python async"
+        assert args.kwargs.get("tags") is None
 
-    def test_search_omits_top_k_when_none(self, mock_session):
-        mcp_mod.memory_search(query="q")
+    def test_write_omits_search_when_none(self, mock_session):
+        mcp_mod.memory_write(content="append only", file="MEMORY.md")
         args = mock_session.execute_tool.call_args
-        assert "top_k" not in args.kwargs
+        assert "search" not in args.kwargs
 
-    def test_search_includes_top_k_when_provided(self, mock_session):
-        mcp_mod.memory_search(query="q", top_k=10)
+    def test_write_omits_start_line_when_none(self, mock_session):
+        mcp_mod.memory_write(content="append only", file="MEMORY.md")
         args = mock_session.execute_tool.call_args
-        assert args.kwargs["top_k"] == 10
+        assert "start_line" not in args.kwargs
 
-    def test_search_omits_source_when_none(self, mock_session):
-        mcp_mod.memory_search(query="q")
-        args = mock_session.execute_tool.call_args
-        assert "source" not in args.kwargs
-
-    def test_search_includes_source_when_provided(self, mock_session):
-        mcp_mod.memory_search(query="q", source="long_term")
-        args = mock_session.execute_tool.call_args
-        assert args.kwargs["source"] == "long_term"
-
-    def test_search_all_optional_params_forwarded(self, mock_session):
-        mcp_mod.memory_search(query="q", top_k=5, source="daily")
-        args = mock_session.execute_tool.call_args
-        assert args.kwargs["top_k"] == 5
-        assert args.kwargs["source"] == "daily"
-
-    def test_search_error_propagates(self, mock_session):
-        mock_session.execute_tool.return_value = _err("index not ready")
-        with pytest.raises(ValueError, match="index not ready"):
-            mcp_mod.memory_search(query="q")
-
-
-# ---------------------------------------------------------------------------
-# memory_get
-# ---------------------------------------------------------------------------
-
-
-class TestMcpMemoryGet:
-    def test_get_returns_json(self, mock_session):
-        mock_session.execute_tool.return_value = _ok(content="# MEMORY\nsome text")
-        out = mcp_mod.memory_get(file="MEMORY.md")
-        parsed = json.loads(out)
-        assert parsed["ok"] is True
-
-    def test_get_forwards_file(self, mock_session):
-        mcp_mod.memory_get(file="MEMORY.md")
-        args = mock_session.execute_tool.call_args
-        assert args.kwargs["file"] == "MEMORY.md"
-
-    def test_get_default_start_line_is_zero(self, mock_session):
-        mcp_mod.memory_get(file="MEMORY.md")
-        args = mock_session.execute_tool.call_args
-        assert args.kwargs["start_line"] == 0
-
-    def test_get_omits_end_line_when_none(self, mock_session):
-        mcp_mod.memory_get(file="MEMORY.md")
+    def test_write_omits_end_line_when_none(self, mock_session):
+        mcp_mod.memory_write(content="append only", file="MEMORY.md")
         args = mock_session.execute_tool.call_args
         assert "end_line" not in args.kwargs
 
-    def test_get_includes_end_line_when_provided(self, mock_session):
-        mcp_mod.memory_get(file="MEMORY.md", start_line=5, end_line=20)
+
+# ---------------------------------------------------------------------------
+# memory_read
+# ---------------------------------------------------------------------------
+
+
+class TestMcpMemoryRead:
+    def test_read_get_mode_returns_json(self, mock_session):
+        mock_session.execute_tool.return_value = _ok(
+            mode="get", content="# MEMORY\nsome text", total_lines=2, file="MEMORY.md"
+        )
+        out = mcp_mod.memory_read(file="MEMORY.md")
+        parsed = json.loads(out)
+        assert parsed["ok"] is True
+        assert parsed["mode"] == "get"
+
+    def test_read_search_mode_returns_json(self, mock_session):
+        mock_session.execute_tool.return_value = _ok(mode="search", results=[], count=0)
+        out = mcp_mod.memory_read(query="test query")
+        parsed = json.loads(out)
+        assert parsed["ok"] is True
+        assert parsed["mode"] == "search"
+
+    def test_read_forwards_file(self, mock_session):
+        mcp_mod.memory_read(file="USER.md")
+        args = mock_session.execute_tool.call_args
+        assert args.kwargs["file"] == "USER.md"
+
+    def test_read_forwards_query(self, mock_session):
+        mcp_mod.memory_read(query="python async")
+        args = mock_session.execute_tool.call_args
+        assert args.kwargs["query"] == "python async"
+
+    def test_read_omits_top_k_when_none(self, mock_session):
+        mcp_mod.memory_read(query="q")
+        args = mock_session.execute_tool.call_args
+        assert "top_k" not in args.kwargs
+
+    def test_read_includes_top_k_when_provided(self, mock_session):
+        mcp_mod.memory_read(query="q", top_k=10)
+        args = mock_session.execute_tool.call_args
+        assert args.kwargs["top_k"] == 10
+
+    def test_read_forwards_start_end_line(self, mock_session):
+        mcp_mod.memory_read(file="MEMORY.md", start_line=5, end_line=20)
         args = mock_session.execute_tool.call_args
         assert args.kwargs["start_line"] == 5
         assert args.kwargs["end_line"] == 20
 
-    def test_get_daily_file_path(self, mock_session):
-        mcp_mod.memory_get(file="daily/2025-03-20.md")
+    def test_read_omits_start_line_when_none(self, mock_session):
+        mcp_mod.memory_read(file="MEMORY.md")
+        args = mock_session.execute_tool.call_args
+        assert "start_line" not in args.kwargs
+
+    def test_read_omits_end_line_when_none(self, mock_session):
+        mcp_mod.memory_read(file="MEMORY.md")
+        args = mock_session.execute_tool.call_args
+        assert "end_line" not in args.kwargs
+
+    def test_read_daily_file_path(self, mock_session):
+        mcp_mod.memory_read(file="daily/2025-03-20.md")
         args = mock_session.execute_tool.call_args
         assert args.kwargs["file"] == "daily/2025-03-20.md"
 
-    def test_get_error_propagates(self, mock_session):
+    def test_read_error_propagates(self, mock_session):
         mock_session.execute_tool.return_value = _err("file not found")
         with pytest.raises(ValueError, match="file not found"):
-            mcp_mod.memory_get(file="missing.md")
+            mcp_mod.memory_read(file="missing.md")
 
-
-# ---------------------------------------------------------------------------
-# memory_list
-# ---------------------------------------------------------------------------
-
-
-class TestMcpMemoryList:
-    def test_list_returns_json(self, mock_session):
-        mock_session.execute_tool.return_value = _ok(files=["MEMORY.md", "USER.md"])
-        out = mcp_mod.memory_list()
-        parsed = json.loads(out)
-        assert parsed["ok"] is True
-
-    def test_list_default_target_is_files(self, mock_session):
-        mcp_mod.memory_list()
+    def test_read_all_optional_params_forwarded(self, mock_session):
+        mcp_mod.memory_read(query="q", top_k=5, file="USER.md")
         args = mock_session.execute_tool.call_args
-        assert args.kwargs["target"] == "files"
-
-    def test_list_with_target_file_forwarded(self, mock_session):
-        mcp_mod.memory_list(target="file", file="MEMORY.md")
-        args = mock_session.execute_tool.call_args
-        assert args.kwargs["target"] == "file"
-        assert args.kwargs["file"] == "MEMORY.md"
-
-    def test_list_omits_file_when_none(self, mock_session):
-        mcp_mod.memory_list(target="files")
-        args = mock_session.execute_tool.call_args
-        assert "file" not in args.kwargs
-
-    def test_list_error_propagates(self, mock_session):
-        mock_session.execute_tool.return_value = _err("workspace empty")
-        with pytest.raises(ValueError, match="workspace empty"):
-            mcp_mod.memory_list()
-
-
-# ---------------------------------------------------------------------------
-# memory_delete
-# ---------------------------------------------------------------------------
-
-
-class TestMcpMemoryDelete:
-    def test_delete_returns_json(self, mock_session):
-        mock_session.execute_tool.return_value = _ok(lines_deleted=3)
-        out = mcp_mod.memory_delete(file="MEMORY.md", start_line=10, end_line=13)
-        parsed = json.loads(out)
-        assert parsed["ok"] is True
-
-    def test_delete_forwards_all_required_args(self, mock_session):
-        mcp_mod.memory_delete(file="MEMORY.md", start_line=2, end_line=5)
-        args = mock_session.execute_tool.call_args
-        assert args.kwargs["file"] == "MEMORY.md"
-        assert args.kwargs["start_line"] == 2
-        assert args.kwargs["end_line"] == 5
-
-    def test_delete_default_reason(self, mock_session):
-        mcp_mod.memory_delete(file="MEMORY.md", start_line=0, end_line=1)
-        args = mock_session.execute_tool.call_args
-        assert args.kwargs["reason"] == "deleted by agent"
-
-    def test_delete_custom_reason_forwarded(self, mock_session):
-        mcp_mod.memory_delete(file="MEMORY.md", start_line=0, end_line=1, reason="no longer relevant")
-        args = mock_session.execute_tool.call_args
-        assert args.kwargs["reason"] == "no longer relevant"
-
-    def test_delete_error_propagates(self, mock_session):
-        mock_session.execute_tool.return_value = _err("line range out of bounds")
-        with pytest.raises(ValueError, match="line range out of bounds"):
-            mcp_mod.memory_delete(file="MEMORY.md", start_line=99, end_line=100)
+        assert args.kwargs["top_k"] == 5
+        assert args.kwargs["file"] == "USER.md"
+        assert args.kwargs["query"] == "q"
 
 
 # ---------------------------------------------------------------------------
@@ -460,7 +420,11 @@ class TestMcpMemoryBootstrap:
         assert "No memory context yet" in out
 
     def test_bootstrap_full_content_returned_verbatim(self, mock_session):
-        content = "<!-- groundmemory bootstrap start -->\n## Your Memory Context\nfacts\n<!-- groundmemory bootstrap end -->"
+        content = (
+            "<!-- groundmemory bootstrap start -->\n"
+            "## Your Memory Context\nfacts\n"
+            "<!-- groundmemory bootstrap end -->"
+        )
         mock_session.bootstrap.return_value = content
         out = mcp_mod.memory_bootstrap()
         assert out == content
@@ -492,21 +456,20 @@ class TestMcpMemoryBootstrapPrompt:
         content = "## Your Memory Context\n\nsome facts"
         mock_session.bootstrap.return_value = content
         tool_out = mcp_mod.memory_bootstrap()
-        # Reset call count, return same value
         mock_session.bootstrap.return_value = content
         prompt_out = mcp_mod.memory_bootstrap_prompt()
         assert tool_out == prompt_out
 
 
 # ---------------------------------------------------------------------------
-# Tool name registration (FastMCP wiring)
+# Tool registration - verify expected tools are wired up to FastMCP
 # ---------------------------------------------------------------------------
 
 
 class TestMcpToolRegistration:
-    """Verify that FastMCP has all 7 tools and 1 prompt registered."""
+    """Verify that FastMCP has the core tools and prompt registered."""
 
-    def _get_registered_tool_names(self):
+    def _tool_names(self) -> set[str]:
         """Extract tool names from the FastMCP instance."""
         try:
             import asyncio
@@ -519,7 +482,7 @@ class TestMcpToolRegistration:
                 return set(tools.keys())
             return set()
 
-    def _get_registered_prompt_names(self):
+    def _prompt_names(self) -> set[str]:
         """Extract prompt names from the FastMCP instance."""
         try:
             import asyncio
@@ -532,19 +495,57 @@ class TestMcpToolRegistration:
                 return set(prompts.keys())
             return set()
 
-    def test_all_seven_tools_registered(self):
-        names = self._get_registered_tool_names()
-        expected = {
+    def test_core_tools_registered(self):
+        """Core tools (always present regardless of config) are registered."""
+        names = self._tool_names()
+        expected_core = {
             "memory_bootstrap",
+            "memory_read",
             "memory_write",
-            "memory_search",
-            "memory_get",
-            "memory_list",
-            "memory_delete",
             "memory_relate",
         }
-        assert expected.issubset(names), f"Missing tools: {expected - names}"
+        assert expected_core.issubset(names), f"Missing core tools: {expected_core - names}"
 
     def test_bootstrap_prompt_registered(self):
-        names = self._get_registered_prompt_names()
+        names = self._prompt_names()
         assert "memory_bootstrap_prompt" in names, f"Prompt not registered. Found: {names}"
+
+    def test_old_tools_not_registered(self):
+        """Old split tools must no longer appear in the registry."""
+        names = self._tool_names()
+        removed = {"memory_search", "memory_get", "memory_delete"}
+        present = removed & names
+        assert not present, f"Old tools still registered: {present}"
+
+
+# ---------------------------------------------------------------------------
+# Config-gated tool behaviour
+# ---------------------------------------------------------------------------
+
+
+class TestConfigGatedTools:
+    """Verify that expose_memory_list and dispatcher_mode gates work."""
+
+    def test_memory_list_absent_by_default(self):
+        """memory_list should NOT be in the FastMCP registry with default config."""
+        mgr = getattr(mcp_mod.mcp, "_tool_manager", None) or getattr(mcp_mod.mcp, "tool_manager", None)
+        if mgr is None:
+            pytest.skip("Cannot introspect FastMCP tool manager")
+        tools = getattr(mgr, "_tools", None) or getattr(mgr, "tools", {})
+        # Default config has expose_memory_list=False, so memory_list should not be registered
+        # (unless the test environment loads a custom config - we skip rather than fail hard)
+        from groundmemory.config import groundmemoryConfig
+        cfg = groundmemoryConfig.auto()
+        if not cfg.expose_memory_list:
+            assert "memory_list" not in tools, "memory_list registered despite expose_memory_list=False"
+
+    def test_memory_tool_absent_by_default(self):
+        """memory_tool dispatcher should NOT be in the registry with default config."""
+        mgr = getattr(mcp_mod.mcp, "_tool_manager", None) or getattr(mcp_mod.mcp, "tool_manager", None)
+        if mgr is None:
+            pytest.skip("Cannot introspect FastMCP tool manager")
+        tools = getattr(mgr, "_tools", None) or getattr(mgr, "tools", {})
+        from groundmemory.config import groundmemoryConfig
+        cfg = groundmemoryConfig.auto()
+        if not cfg.dispatcher_mode:
+            assert "memory_tool" not in tools, "memory_tool registered despite dispatcher_mode=False"

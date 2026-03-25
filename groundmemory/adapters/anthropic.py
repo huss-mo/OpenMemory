@@ -1,5 +1,5 @@
-"""
-Anthropic adapter — converts groundmemory tool schemas into the format expected
+﻿"""
+Anthropic adapter - converts groundmemory tool schemas into the format expected
 by the Anthropic Messages API (``tools`` parameter).
 
 Usage
@@ -84,8 +84,8 @@ def handle_tool_calls(
     -------
     (assistant_turn, tool_result_turn)
         Two message dicts ready to be appended to your messages list.
-        ``assistant_turn``   — the assistant message containing tool_use blocks.
-        ``tool_result_turn`` — a user message containing all tool_result blocks.
+        ``assistant_turn``   - the assistant message containing tool_use blocks.
+        ``tool_result_turn`` - a user message containing all tool_result blocks.
 
     Example
     -------
@@ -182,7 +182,7 @@ def run_agent_loop(
             if should_flush(used, compaction_cfg):
                 prompts = get_compaction_prompts(compaction_cfg)
                 messages.append({"role": "user", "content": prompts["user"]})
-                # One dedicated flush turn — let the model write to memory
+                # One dedicated flush turn - let the model write to memory
                 flush_response = client.messages.create(
                     model=model,
                     max_tokens=max_tokens,

@@ -1,5 +1,5 @@
-"""
-memory_search tool — hybrid semantic + keyword search across all memory.
+﻿"""
+memory_search tool - hybrid semantic + keyword search across all memory.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ SCHEMA = {
     "name": "memory_search",
     "description": (
         "Search memory using natural language. Combines semantic (meaning-based) and keyword search. "
-        "Use this to recall past decisions, preferences, context, or facts — even if you don't remember "
+        "Use this to recall past decisions, preferences, context, or facts - even if you don't remember "
         "the exact wording. Results include relation context when relevant entities are found."
     ),
     "parameters": {

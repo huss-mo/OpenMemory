@@ -1,4 +1,4 @@
-"""
+﻿"""
 examples/openai_agent.py
 ========================
 Minimal example of an OpenAI-powered agent that uses groundmemory to persist
@@ -69,11 +69,11 @@ while True:
     messages.append({"role": "user", "content": user_input})
 
     # Check if we should compact before calling the model
-    # (token counts are approximate here — use tiktoken for production)
+    # (token counts are approximate here - use tiktoken for production)
     approx_tokens = sum(len(m.get("content", "") or "") // 4 for m in messages)
     if session.should_compact(approx_tokens, 128_000):
         prompts = session.compaction_prompts()
-        print("[groundmemory] Context window approaching limit — triggering memory flush.")
+        print("[groundmemory] Context window approaching limit - triggering memory flush.")
         messages.append({"role": "system", "content": prompts["system"]})
         messages.append({"role": "user", "content": prompts["user"]})
 

@@ -1,4 +1,4 @@
-"""
+﻿"""
 Integration tests for real embeddings + vector search.
 
 These tests are skipped automatically when:
@@ -50,7 +50,7 @@ def embeddings_session(tmp_path_factory):
     cfg = _load_embeddings_config()
 
     if cfg.embedding.provider == "none":
-        pytest.skip("Embedding provider is 'none' — skipping real-embeddings tests")
+        pytest.skip("Embedding provider is 'none' - skipping real-embeddings tests")
 
     # Build a temporary session to probe the provider
     tmp = tmp_path_factory.mktemp("embeddings_integration")
@@ -142,20 +142,19 @@ class TestVectorSearch:
         )
         s = MemorySession.create(uuid.uuid4().hex[:8], config=s_cfg)
         try:
-            # Write some content (memory_write uses tier=, not file=)
             s.execute_tool(
                 "memory_write",
+                file="MEMORY.md",
                 content="Alice is a senior software engineer who specialises in Python and machine learning.",
-                tier="long_term",
             )
             s.execute_tool(
                 "memory_write",
+                file="MEMORY.md",
                 content="Bob is a product manager focused on mobile applications and user experience.",
-                tier="long_term",
             )
             s.sync()
 
-            results = s.execute_tool("memory_search", query="Python software engineer")
+            results = s.execute_tool("memory_read", query="Python software engineer")
             assert results["status"] == "ok"
             assert len(results["results"]) > 0
 
@@ -179,14 +178,14 @@ class TestVectorSearch:
         try:
             s.execute_tool(
                 "memory_write",
+                file="MEMORY.md",
                 content="The team uses pytest for automated testing of the backend services.",
-                tier="long_term",
             )
             s.sync()
 
             # Query uses different words but same meaning
             results = s.execute_tool(
-                "memory_search",
+                "memory_read",
                 query="automated quality assurance framework for server-side code",
             )
             assert results["status"] == "ok"
@@ -208,7 +207,7 @@ class TestVectorSearch:
             "The engineering team decided to migrate the authentication service "
             "from a monolith to microservices architecture."
         )
-        # Paraphrase query — no words in common with content except 'the'
+        # Paraphrase query - no words in common with content except 'the'
         paraphrase_query = "breaking apart a large application into smaller independent services"
 
         def _run_search(vector_weight: float) -> list[dict]:
@@ -222,11 +221,11 @@ class TestVectorSearch:
             try:
                 s.execute_tool(
                     "memory_write",
+                    file="MEMORY.md",
                     content=content,
-                    tier="long_term",
                 )
                 s.sync()
-                r = s.execute_tool("memory_search", query=paraphrase_query)
+                r = s.execute_tool("memory_read", query=paraphrase_query)
                 return r.get("results", [])
             finally:
                 s.close()
@@ -305,12 +304,12 @@ class TestEndToEndMemorySearch:
             for fact in facts:
                 s.execute_tool(
                     "memory_write",
+                    file="MEMORY.md",
                     content=fact,
-                    tier="long_term",
                 )
             s.sync()
 
-            r = s.execute_tool("memory_search", query="deployment infrastructure cloud")
+            r = s.execute_tool("memory_read", query="deployment infrastructure cloud")
             assert r["status"] == "ok"
             assert len(r["results"]) > 0
             # Kubernetes/AWS fact should rank highly

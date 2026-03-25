@@ -1,5 +1,5 @@
-"""
-Workspace management — directory layout, initialization, and file path resolution.
+﻿"""
+Workspace management - directory layout, initialization, and file path resolution.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ The agent writes here when something important should be remembered across sessi
 _DEFAULT_USER_MD = """\
 # User Profile
 
-Add stable facts about the user here — name, role, working style, preferences.
+Add stable facts about the user here - name, role, working style, preferences.
 """
 
 _DEFAULT_AGENTS_MD = """\
@@ -30,7 +30,7 @@ _DEFAULT_AGENTS_MD = """\
 
 | Tier | File | Use for |
 |------|------|---------|
-| `long_term` | MEMORY.md | Curated facts, decisions, project knowledge — anything that should persist indefinitely |
+| `long_term` | MEMORY.md | Curated facts, decisions, project knowledge - anything that should persist indefinitely |
 | `daily` | daily/YYYY-MM-DD.md | Running session notes, task progress, short-lived context |
 | `user` | USER.md | Stable facts *about the user*: name, role, organisation, location, preferences |
 | `agent` | AGENTS.md | Behavioural rules for future sessions (e.g. "always search before answering") |
@@ -63,7 +63,7 @@ When to relate vs. write:
 When a relation changes (job change, location change, team reassignment), use `supersedes=True` to replace the old value instead of accumulating duplicates:
 
 ```
-# User changed jobs — old works_at should be removed
+# User changed jobs - old works_at should be removed
 memory_relate(subject="Alice", predicate="works_at", object="New Corp", supersedes=True, note="Previously at Old Corp")
 
 # User moved cities
@@ -71,7 +71,7 @@ memory_relate(subject="Alice", predicate="lives_in", object="Berlin", supersedes
 ```
 
 **Rules:**
-- Use `supersedes=True` only when the old value is no longer valid — it deletes ALL prior `(subject, predicate)` triples.
+- Use `supersedes=True` only when the old value is no longer valid - it deletes ALL prior `(subject, predicate)` triples.
 - Do NOT use `supersedes=True` when multiple objects are valid at the same time (e.g. `knows`, `attended`, `member_of`).
 - Before writing any relation, call `memory_search` to check if a conflicting one already exists.
 
@@ -80,13 +80,13 @@ memory_relate(subject="Alice", predicate="lives_in", object="Berlin", supersedes
 You may read and edit RELATIONS.md using `memory_get`, `memory_replace_text`, `memory_replace_lines`, and `memory_delete`. **Every non-blank, non-header line must follow this exact format:**
 
 ```
-- [Subject] --predicate--> [Object] (YYYY-MM-DD) — "optional note"
+- [Subject] --predicate--> [Object] (YYYY-MM-DD) - "optional note"
 ```
 
 Examples of valid lines:
 ```
 - [Alice] --leads--> [Auth Team] (2026-03-20)
-- [Alice] --leads--> [Auth Team] (2026-03-20) — "Assigned during sprint planning"
+- [Alice] --leads--> [Auth Team] (2026-03-20) - "Assigned during sprint planning"
 - [Auth Service] --owned_by--> [Platform Team] (2026-03-20)
 ```
 
@@ -94,7 +94,7 @@ Examples of valid lines:
 - Subject and Object are wrapped in square brackets: `[Name]`
 - Predicate uses **snake_case** and is wrapped with `--` and `-->`: `--predicate-->`
 - Date `(YYYY-MM-DD)` is required
-- Note (after `—`) is optional
+- Note (after `-`) is optional
 - Lines that do not match this format will be rejected when using replace tools
 """
 
@@ -102,7 +102,7 @@ _DEFAULT_RELATIONS_MD = """\
 # Relations
 
 Named relationships between entities (people, teams, systems, concepts).
-Format: [Subject] --predicate--> [Object] (date) — note
+Format: [Subject] --predicate--> [Object] (date) - note
 
 """
 

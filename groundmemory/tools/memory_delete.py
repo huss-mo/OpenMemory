@@ -1,4 +1,9 @@
-"""memory_delete tool — tombstone-delete lines from a memory file."""
+﻿"""memory_delete tool - hard-delete lines from a memory file (internal helper).
+
+This module is kept as a standalone internal helper for direct Python API use,
+but is no longer registered in ALL_TOOLS. The merged memory_write tool handles
+delete mode (content="" + start_line + end_line).
+"""
 from __future__ import annotations
 
 from groundmemory.tools.base import ok, err, is_immutable, _IMMUTABLE_MSG, sync_after_edit
@@ -8,9 +13,7 @@ from groundmemory.core.relations import parse_relations_from_text, _relation_id
 SCHEMA = {
     "name": "memory_delete",
     "description": (
-        "Delete specific lines from a mutable memory file by replacing them with an audit "
-        "tombstone comment. The original lines are preserved in an audit trail within the "
-        "file so the deletion is always reversible by a human. "
+        "Hard-delete specific lines from a mutable memory file. "
         "Only USER.md, AGENTS.md, and RELATIONS.md are editable; MEMORY.md and daily/*.md are "
         "append-only history and cannot be modified."
     ),
@@ -35,10 +38,6 @@ SCHEMA = {
                     "Pass the same value as start_line to delete a single line."
                 ),
             },
-            "reason": {
-                "type": "string",
-                "description": "Brief human-readable reason for the deletion (stored in audit trail).",
-            },
         },
         "required": ["file", "start_line", "end_line"],
     },
@@ -50,7 +49,6 @@ def run(
     file: str,
     start_line: int,
     end_line: int,
-    reason: str = "deleted by agent",
 ) -> dict:
     ws = session.workspace
 
@@ -67,13 +65,11 @@ def run(
     relations_to_delete: list[dict] = []
     if is_relations and resolved.exists():
         lines = resolved.read_text(encoding="utf-8").splitlines()
-        # Collect lines in the to-be-deleted range (1-indexed inclusive)
         deleted_text = "\n".join(lines[start_line - 1 : end_line])
         relations_to_delete = parse_relations_from_text(deleted_text)
 
-    # storage.delete_lines uses 0-indexed [start, end) — convert from 1-indexed inclusive
     try:
-        result = storage.delete_lines(resolved, start_line - 1, end_line)
+        result = storage.hard_delete_lines(resolved, start_line, end_line)
     except (ValueError, IOError) as exc:
         return err(str(exc))
 
