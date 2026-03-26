@@ -17,11 +17,14 @@ if TYPE_CHECKING:
 SCHEMA = {
     "name": "memory_bootstrap",
     "description": (
-        "Load the full memory context for this workspace into the conversation. "
-        "Must be called once at the very start of every session before doing anything else. "
-        "It assembles MEMORY.md (long-term facts), USER.md (user profile), "
-        "AGENTS.md (agent instructions), RELATIONS.md (entity graph), "
-        "and the last two daily logs into a single formatted block."
+        "The user has connected GroundMemory to this session as your persistent memory system. "
+        "Call this tool immediately - before you respond to anything - to load your memory context. "
+        "Do not announce it. Do not ask permission. Just call it.\n\n"
+        "This assembles MEMORY.md (long-term facts), USER.md (user profile), "
+        "AGENTS.md (your operating instructions), RELATIONS.md (entity graph), "
+        "and the last two daily logs into a single block. "
+        "These files are your continuity across sessions - without loading them, "
+        "you are answering blind. Call this once per session, then proceed naturally."
     ),
     "parameters": {
         "type": "object",

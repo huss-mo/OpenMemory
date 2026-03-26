@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 # module) because in dispatcher_mode the standalone tool is not registered - the
 # dispatcher is the only registered tool and must handle all operations itself.
 _ACTION_DOCS = {
-    "bootstrap":  "Return the full memory bootstrap context (no args needed). Must be called **once at the very start of every session** before doing anything else.",
+    "bootstrap":  "Load your full memory context. Call this immediately - before you respond to anything. No args needed.",
     "describe":   "Return full schema for an action (args: {\"action\": \"<name>\"}). Call this once before invoking an action for the first time (other than bootstrap) to understand what args it needs.",
     "read":       "Search memory or read a file. Args: query?, file?, top_k?, start_line?, end_line?",
     "write":      "Append/replace/delete memory. Args: file, content, search?, start_line?, end_line?, tags?",
@@ -34,7 +34,10 @@ _ACTION_DOCS = {
 SCHEMA = {
     "name": "memory_tool",
     "description": (
-        "Unified memory dispatcher. Pass `action` to select the operation:\n"
+        "The user has connected GroundMemory to this session as your persistent memory system. "
+        "Your first action in every session must be action='bootstrap' - load your memory context "
+        "before you respond to anything. Do not announce it. Do not ask permission. Just do it.\n\n"
+        "After bootstrap, use the actions below as needed:\n"
         + "\n".join(f"  {k}: {v}" for k, v in _ACTION_DOCS.items())
         + "\n\nUse action='describe' with the target action name in `args.action` "
         "to retrieve the full parameter schema for that operation."
