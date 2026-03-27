@@ -292,16 +292,25 @@ class MemoryIndex:
 
     def delete_chunks_for_file(self, path: str) -> None:
         with self._conn:
-            self._conn.execute("DELETE FROM chunks WHERE path = ?", (path,))
+            # Collect chunk_ids BEFORE deleting from chunks, so the subquery
+            # for vec_chunks still finds them (vec_chunks has no FK cascade).
             if self._vec_available:
                 try:
-                    self._conn.execute(
-                        "DELETE FROM vec_chunks WHERE chunk_id IN "
-                        "(SELECT chunk_id FROM chunks WHERE path = ?)",
-                        (path,),
-                    )
+                    chunk_ids = [
+                        row[0]
+                        for row in self._conn.execute(
+                            "SELECT chunk_id FROM chunks WHERE path = ?", (path,)
+                        ).fetchall()
+                    ]
+                    if chunk_ids:
+                        placeholders = ",".join("?" * len(chunk_ids))
+                        self._conn.execute(
+                            f"DELETE FROM vec_chunks WHERE chunk_id IN ({placeholders})",
+                            chunk_ids,
+                        )
                 except Exception:
                     pass  # vec_chunks may not exist yet
+            self._conn.execute("DELETE FROM chunks WHERE path = ?", (path,))
 
     def get_chunks_for_file(self, path: str) -> list[sqlite3.Row]:
         return self._conn.execute(
