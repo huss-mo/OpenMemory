@@ -8,8 +8,10 @@ Pipeline:
   4. Merge & re-score: score = vector_weight * vec_score + (1-vector_weight) * text_score
   5. Cross-encoder reranking (optional, if rerank_model is set)
   6. Apply temporal decay (if configured) — post-rerank so recency nudges relevance scores
-  7. Graph expansion: extract entity mentions from top results, pull in related relations
-  8. Return top_k final results
+  7. MMR diversification (optional, if mmr_lambda > 0) — greedily selects top_k results
+     that balance relevance against similarity to already-selected results
+  8. Graph expansion: extract entity mentions from top results, pull in related relations
+  9. Return top_k final results
 """
 
 from __future__ import annotations
@@ -18,6 +20,8 @@ import math
 import re
 import time
 from typing import Optional
+
+import numpy as np
 
 from groundmemory.config import SearchConfig
 from groundmemory.core.embeddings import EmbeddingProvider
@@ -141,6 +145,96 @@ def _apply_temporal_decay(results: list[dict], decay_rate: float) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# MMR diversification
+# ---------------------------------------------------------------------------
+
+
+def _apply_mmr(
+    results: list[dict],
+    top_k: int,
+    mmr_lambda: float,
+    index: MemoryIndex,
+) -> list[dict]:
+    """
+    Maximal Marginal Relevance (MMR) diversification.
+
+    Greedily selects ``top_k`` results from ``results`` by iteratively picking
+    the candidate that maximises:
+
+        mmr_lambda * relevance_score  -  (1 - mmr_lambda) * max_cosine_sim_to_selected
+
+    where ``relevance_score`` is the hybrid (post-decay) score and
+    ``max_cosine_sim_to_selected`` is the maximum cosine similarity to any
+    result already selected (computed from stored chunk embeddings).
+
+    Args:
+        results:    Candidate list, already sorted by descending score.
+        top_k:      Number of results to select.
+        mmr_lambda: Trade-off weight.  0.0 = pure diversity; 1.0 = pure relevance.
+                    Caller guards against mmr_lambda == 0.0 (disabled).
+        index:      MemoryIndex used to retrieve stored chunk embeddings.
+
+    Returns:
+        A new list of at most ``top_k`` result dicts in MMR-selected order.
+    """
+    if not results:
+        return results
+
+    # Fetch embeddings for all candidates in a single bulk DB query.
+    chunk_ids = [r["chunk_id"] for r in results]
+    emb_map = index.get_embeddings_by_ids(chunk_ids)
+
+    # Build a parallel list of unit-normalised numpy vectors.
+    # Candidates without a stored embedding are treated as having zero
+    # similarity to everything (they will only be selected for relevance).
+    vecs: list[Optional[np.ndarray]] = []
+    for r in results:
+        raw = emb_map.get(r["chunk_id"])
+        if raw is not None:
+            v = np.array(raw, dtype=np.float32)
+            norm = np.linalg.norm(v)
+            vecs.append(v / norm if norm > 0 else None)
+        else:
+            vecs.append(None)
+
+    selected_indices: list[int] = []
+    remaining_indices = list(range(len(results)))
+
+    while remaining_indices and len(selected_indices) < top_k:
+        best_idx: Optional[int] = None
+        best_mmr_score = float("-inf")
+
+        for i in remaining_indices:
+            relevance = results[i]["score"]
+
+            # Max cosine similarity to already-selected items.
+            if not selected_indices:
+                max_sim = 0.0
+            else:
+                vi = vecs[i]
+                sims: list[float] = []
+                for j in selected_indices:
+                    vj = vecs[j]
+                    if vi is not None and vj is not None:
+                        sims.append(float(np.dot(vi, vj)))
+                    else:
+                        sims.append(0.0)
+                max_sim = max(sims) if sims else 0.0
+
+            mmr_score = mmr_lambda * relevance - (1.0 - mmr_lambda) * max_sim
+            if mmr_score > best_mmr_score:
+                best_mmr_score = mmr_score
+                best_idx = i
+
+        if best_idx is None:
+            break
+        selected_indices.append(best_idx)
+        remaining_indices.remove(best_idx)
+
+    return [results[i] for i in selected_indices]
+
+
+# ---------------------------------------------------------------------------
 # Graph expansion
 # ---------------------------------------------------------------------------
 
@@ -207,7 +301,7 @@ def hybrid_search(
 ) -> list[SearchResult]:
     """
     Full hybrid search pipeline:
-      embed → vector search + keyword search → merge → rerank → decay → graph expand → top_k
+      embed → vector search + keyword search → merge → rerank → decay → MMR → graph expand → top_k
 
     Args:
         query:         Natural language search query.
@@ -256,10 +350,14 @@ def hybrid_search(
     # Step 6: Temporal decay
     merged = _apply_temporal_decay(merged, config.temporal_decay_rate)
 
-    # Step 7: Graph expansion (enrich top results with relation context)
+    # Step 7: MMR diversification (optional)
+    if config.mmr_lambda > 0.0:
+        merged = _apply_mmr(merged, k, config.mmr_lambda, index)
+
+    # Step 8: Graph expansion (enrich top results with relation context)
     merged = _expand_with_relations(merged, index, k)
 
-    # Step 8: Return top_k as SearchResult objects
+    # Step 9: Return top_k as SearchResult objects
     final = merged[:k]
     return [
         SearchResult(

@@ -1,6 +1,6 @@
 [project]
 name = "groundmemory"
-version = "0.5.0"
+version = "0.5.1"
 description = "Persistent, semantic memory for AI agents - mcp-native, local-first, framework-agnostic, production-ready"
 readme = "README.md"
 requires-python = ">=3.12"

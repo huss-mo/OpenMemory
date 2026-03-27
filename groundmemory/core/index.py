@@ -484,7 +484,7 @@ class MemoryIndex:
             if row is None:
                 continue  # filtered out by source/model_id
             dist = dist_by_id[cid]
-            # Convert L2 → cosine (valid because both vectors are unit-length).
+            # Convert L2 to cosine (valid because both vectors are unit-length).
             cosine = 1.0 - (dist ** 2) / 2.0
             cosine = max(-1.0, min(1.0, cosine))  # numerical clamp
             scored.append({
@@ -565,7 +565,7 @@ class MemoryIndex:
         tokens = [t for t in query.split() if t.strip()]
         if not tokens:
             return []
-        fts_query = " AND ".join(f'"{t}"' for t in tokens)
+        fts_query = ' AND '.join(f'"{t}"' for t in tokens)
 
         source_filter_clause = ""
         params: list = [fts_query]
@@ -575,7 +575,7 @@ class MemoryIndex:
         params.append(top_k)
 
         rows = self._conn.execute(
-            f"""
+            f'''
             SELECT c.chunk_id, c.path, c.source, c.start_line, c.end_line, c.text,
                    c.updated_at, bm25(chunks_fts) AS bm25_rank,
                    snippet(chunks_fts, 0, '<b>', '</b>', '...', 32) AS snippet
@@ -585,15 +585,13 @@ class MemoryIndex:
             {source_filter_clause}
             ORDER BY bm25_rank
             LIMIT ?
-            """,
+            ''',
             params,
         ).fetchall()
 
         results = []
         for row in rows:
-            # BM25 rank from FTS5: more negative = better match
-            # Normalize to 0–1: rank=0 → 1.0 (perfect), rank approaches -inf → ~0
-            rank = row["bm25_rank"]  # negative float
+            rank = row["bm25_rank"]  # negative float; more negative = better match
             text_score = 1.0 / (1.0 + abs(rank)) if rank != 0 else 1.0
             results.append({
                 "chunk_id": row["chunk_id"],
@@ -609,6 +607,26 @@ class MemoryIndex:
                 "score": text_score,
             })
         return results
+
+    # ------------------------------------------------------------------
+    # Embedding retrieval (for MMR and other post-search uses)
+    # ------------------------------------------------------------------
+
+    def get_embeddings_by_ids(self, chunk_ids: list[str]) -> dict[str, list[float]]:
+        """
+        Return a mapping of chunk_id -> embedding for the given chunk IDs.
+
+        Only chunk IDs that exist in the database are included in the result.
+        Embeddings are returned as plain Python lists of floats (not normalised).
+        """
+        if not chunk_ids:
+            return {}
+        placeholders = ",".join("?" * len(chunk_ids))
+        rows = self._conn.execute(
+            f"SELECT chunk_id, embedding FROM chunks WHERE chunk_id IN ({placeholders})",
+            chunk_ids,
+        ).fetchall()
+        return {row["chunk_id"]: json.loads(row["embedding"]) for row in rows}
 
     # ------------------------------------------------------------------
     # Stats / introspection

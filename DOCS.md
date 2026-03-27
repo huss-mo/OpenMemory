@@ -583,14 +583,16 @@ SQLite database (`memory.db`) with five tables:
 Vector search is implemented in pure Python (NumPy cosine similarity) so it works everywhere without native extensions. The database runs in WAL (Write-Ahead Logging) mode (`PRAGMA journal_mode=WAL`) for better concurrent read performance.
 
 #### 6. Hybrid Search (`GroundMemory/core/search.py`)
-Seven-step pipeline:
+Nine-step pipeline:
 1. **Embed** the query via the configured provider.
 2. **Vector search** - cosine similarity over all chunk embeddings → top `k × candidate_multiplier` candidates.
 3. **Keyword search** - FTS5 BM25 → top `k × candidate_multiplier` candidates.
 4. **Merge & re-score** - `score = vector_weight × vec_score + (1 − vector_weight) × bm25_score`.
-5. **Temporal decay** - `score × exp(−decay_rate × days_old)` (disabled by default).
-6. **Graph expansion** - extract entity mentions from top results, attach related relation triples as `relation_context`.
-7. Return top `k` as `SearchResult` objects.
+5. **Cross-encoder reranking** (optional) - if `search.rerank_model` is set, a cross-encoder rescores the merged candidates for higher precision.
+6. **Temporal decay** - `score × exp(−decay_rate × days_old)` (disabled by default; applied post-rerank so recency nudges the final order).
+7. **MMR diversification** (optional) - if `search.mmr_lambda > 0`, Maximal Marginal Relevance greedily selects `top_k` results that balance relevance against similarity to already-selected results: `mmr_score = mmr_lambda × relevance − (1 − mmr_lambda) × max_cosine_sim_to_selected`. Set via config only — not exposed as a tool parameter.
+8. **Graph expansion** - extract entity mentions from top results, attach related relation triples as `relation_context`.
+9. Return top `k` as `SearchResult` objects.
 
 #### 7. Relation Graph (`GroundMemory/core/relations.py`)
 Single consolidated module for all relation logic. Stores typed entity triples (`subject → predicate → object`) in two places simultaneously:
