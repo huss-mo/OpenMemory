@@ -71,18 +71,20 @@ USER.md. If it's about something that occurred or was discussed, it goes in MEMO
 
 ---
 
-## Tool modes
+## Using memory
 
-**Normal mode** - four separate tools:
-- `memory_bootstrap` - call once at session start; loads all memory context
-- `memory_read` - search or read a file
-- `memory_write` - append, replace, or delete
-- `memory_relate` - record entity relationships
+Search before answering questions that may have been discussed before. Use `memory_read`
+to search or retrieve, `memory_write` to record, and `memory_relate` for relationships
+between entities.
+"""
 
-**Dispatcher mode** - one tool, `memory_tool(action, args)`:
-- `action="bootstrap"` - same as memory_bootstrap
-- `action="describe", args={"action":"<name>"}` - get full schema for an action before using it. The tool descriptions below are not comprehensive.
-- `action="read"`, `action="write"`, `action="relate"`, `action="list"` - same as individual tools
+_AGENT_TOOLS_DISPATCHER_MD = """\
+## Tool usage
+
+You have one tool: `memory_tool(action, args)`.
+- `action="bootstrap"` - load full memory context (call once at session start)
+- `action="describe", args={"action":"<name>"}` - get full schema for any action before using it. The descriptions below are not comprehensive.
+- `action="read"`, `action="write"`, `action="relate"`, `action="list"` - memory operations
 
 ---
 
@@ -90,14 +92,14 @@ USER.md. If it's about something that occurred or was discussed, it goes in MEMO
 
 **Search** - use when you need to find something specific:
 ```
-memory_read(query="Alice's current employer")
-memory_read(query="auth service architecture", file="daily")
+memory_tool("read", {"query": "Alice's current employer"})
+memory_tool("read", {"query": "auth service architecture", "file": "daily"})
 ```
 
 **Get a file** - use when you need full content or a specific range:
 ```
-memory_read(file="USER.md")
-memory_read(file="RELATIONS.md", start_line=1, end_line=20)
+memory_tool("read", {"file": "USER.md"})
+memory_tool("read", {"file": "RELATIONS.md", "start_line": 1, "end_line": 20})
 ```
 
 Search before answering questions that may have been discussed before.
@@ -110,38 +112,38 @@ Search before answering questions that may have been discussed before.
 
 ### Append (add new content)
 ```
-memory_write(file="MEMORY.md", content="Prefers TypeScript over JavaScript.")
-memory_write(file="daily", content="Discussed the auth refactor. User leaning toward JWTs.")
+memory_tool("write", {"file": "MEMORY.md", "content": "Prefers TypeScript over JavaScript."})
+memory_tool("write", {"file": "daily", "content": "Discussed the auth refactor. User leaning toward JWTs."})
 ```
 Before appending to MEMORY.md, USER.md, or AGENTS.md, search first to avoid duplicates.
 
 ### Replace (update existing content)
 ```
 # By exact text match (first occurrence):
-memory_write(file="USER.md", search="Works at Acme Corp.", content="Works at New Corp.")
+memory_tool("write", {"file": "USER.md", "search": "Works at Acme Corp.", "content": "Works at New Corp."})
 
 # By line range (read the file first to find the lines):
-memory_write(file="USER.md", start_line=3, end_line=3, content="Works at New Corp.")
+memory_tool("write", {"file": "USER.md", "start_line": 3, "end_line": 3, "content": "Works at New Corp."})
 ```
 
 ### Delete lines
 ```
-memory_write(file="USER.md", start_line=5, end_line=7, content="")
+memory_tool("write", {"file": "USER.md", "start_line": 5, "end_line": 7, "content": ""})
 ```
 
 ---
 
 ## Relationships
 
-Use `memory_relate` for directional facts between entities (snake_case predicates):
+Use `memory_tool("relate", ...)` for directional facts between entities (snake_case predicates):
 ```
-memory_relate(subject="Alice", predicate="works_at", object="Acme Corp")
-memory_relate(subject="Bob", predicate="manages", object="Alice")
+memory_tool("relate", {"subject": "Alice", "predicate": "works_at", "object": "Acme Corp"})
+memory_tool("relate", {"subject": "Bob", "predicate": "manages", "object": "Alice"})
 ```
 
 When a relation is no longer valid (job change, location change), use `supersedes=True`:
 ```
-memory_relate(subject="Alice", predicate="works_at", object="New Corp", supersedes=True)
+memory_tool("relate", {"subject": "Alice", "predicate": "works_at", "object": "New Corp", "supersedes": true})
 ```
 Do NOT use `supersedes=True` when multiple values are valid simultaneously (e.g. `knows`, `attended`).
 

@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Sequence
 
 from groundmemory.config import BootstrapConfig
-from groundmemory.core.workspace import Workspace
+from groundmemory.core.workspace import Workspace, _AGENT_TOOLS_DISPATCHER_MD
 from groundmemory.core import storage, relations as _graph
 from groundmemory.core.index import MemoryIndex
 
@@ -57,6 +57,7 @@ def build_bootstrap_prompt(
     workspace: Workspace,
     cfg: BootstrapConfig,
     index: MemoryIndex | None = None,
+    dispatcher_mode: bool = False,
 ) -> str:
     """
     Build the full memory-injection string for the system prompt.
@@ -126,6 +127,10 @@ def build_bootstrap_prompt(
     # 3. Agent roster (AGENTS.md)
     if cfg.inject_agents:
         _add("Agent Roster", workspace.agents_file)
+        # In dispatcher mode, inject full tool usage instructions (the agent has only
+        # one opaque tool and cannot see individual tool schemas).
+        if dispatcher_mode:
+            _add("Tool Usage", None, body=_AGENT_TOOLS_DISPATCHER_MD)
 
     # 4. Relation graph
     if cfg.inject_relations:

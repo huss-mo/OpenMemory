@@ -16,7 +16,9 @@ SCHEMA = {
         "subject+predicate - for example, when someone changes jobs, moves cities, or "
         "changes teams. This removes all prior (subject, predicate) triples before "
         "writing the new one. Do NOT set supersedes=True when multiple objects can be "
-        "valid simultaneously (e.g. a person can attend multiple meetups)."
+        "valid simultaneously (e.g. a person can work at multiple places).\n\n"
+        "RELATIONS.md line format (every non-blank, non-comment line must match exactly):\n"
+        "- [Subject] --predicate--> [Object] (YYYY-MM-DD) - \"optional note\""
     ),
     "parameters": {
         "type": "object",

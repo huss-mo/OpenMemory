@@ -123,7 +123,11 @@ class MemorySession:
 
         from groundmemory.bootstrap.injector import build_bootstrap_prompt
 
-        return build_bootstrap_prompt(self.workspace, self.config.bootstrap)
+        return build_bootstrap_prompt(
+            self.workspace,
+            self.config.bootstrap,
+            dispatcher_mode=self.config.dispatcher_mode,
+        )
 
     # ------------------------------------------------------------------
     # Compaction helpers
