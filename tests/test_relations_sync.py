@@ -487,27 +487,27 @@ class TestMemoryDeleteRelations:
 
 
 # ===========================================================================
-# 8. session.bootstrap() with sync_relations_on_bootstrap=True
+# 8. session.bootstrap() with sync_memory_on_bootstrap=True
 # ===========================================================================
 
 
 class TestBootstrapSyncRelations:
     def test_bootstrap_sync_false_by_default(self, tmp_path):
-        """BootstrapConfig.sync_relations_on_bootstrap defaults to False."""
+        """BootstrapConfig.sync_memory_on_bootstrap defaults to False."""
         cfg = BootstrapConfig()
-        assert cfg.sync_relations_on_bootstrap is False
+        assert cfg.sync_memory_on_bootstrap is False
 
     def test_bootstrap_sync_can_be_set_true(self, tmp_path):
-        cfg = BootstrapConfig(sync_relations_on_bootstrap=True)
-        assert cfg.sync_relations_on_bootstrap is True
+        cfg = BootstrapConfig(sync_memory_on_bootstrap=True)
+        assert cfg.sync_memory_on_bootstrap is True
 
     def test_bootstrap_with_sync_true_populates_sqlite(self, tmp_path):
         """
-        When sync_relations_on_bootstrap=True, bootstrap() reconciles SQLite
-        from whatever is in RELATIONS.md at session open time.
+        When sync_memory_on_bootstrap=True, bootstrap() runs sync_workspace which
+        re-indexes all files including RELATIONS.md, populating SQLite relations.
         """
         # Step 1: create session, write RELATIONS.md manually (no add_relation)
-        s = _make_session(tmp_path, sync_relations_on_bootstrap=True)
+        s = _make_session(tmp_path, sync_memory_on_bootstrap=True)
         try:
             _write_relations(s, "- [Zara] --owns--> [Laptop]\n")
             # SQLite is empty at this point - the line was written directly
@@ -523,10 +523,10 @@ class TestBootstrapSyncRelations:
 
     def test_bootstrap_with_sync_false_does_not_populate_sqlite(self, tmp_path):
         """
-        When sync_relations_on_bootstrap=False (default), bootstrap() must NOT
-        reconcile SQLite - manually written RELATIONS.md lines stay out of SQLite.
+        When sync_memory_on_bootstrap=False (default), bootstrap() must NOT
+        re-index files - manually written RELATIONS.md lines stay out of SQLite.
         """
-        s = _make_session(tmp_path, sync_relations_on_bootstrap=False)
+        s = _make_session(tmp_path, sync_memory_on_bootstrap=False)
         try:
             _write_relations(s, "- [Zara] --owns--> [Laptop]\n")
             assert len(s.index.get_all_relations()) == 0
@@ -536,7 +536,7 @@ class TestBootstrapSyncRelations:
             s.close()
 
     def test_bootstrap_returns_string_with_sync_true(self, tmp_path):
-        s = _make_session(tmp_path, sync_relations_on_bootstrap=True)
+        s = _make_session(tmp_path, sync_memory_on_bootstrap=True)
         try:
             result = s.bootstrap()
             assert isinstance(result, str)
@@ -544,8 +544,8 @@ class TestBootstrapSyncRelations:
             s.close()
 
     def test_bootstrap_sync_tolerates_missing_relations_file(self, tmp_path):
-        """sync_relations_on_bootstrap=True must not raise when RELATIONS.md is absent."""
-        s = _make_session(tmp_path, sync_relations_on_bootstrap=True)
+        """sync_memory_on_bootstrap=True must not raise when RELATIONS.md is absent."""
+        s = _make_session(tmp_path, sync_memory_on_bootstrap=True)
         try:
             rf = s.workspace.relations_file
             if rf.exists():
@@ -631,36 +631,36 @@ class TestSyncTriggerRelations:
 
 
 # ===========================================================================
-# 10. BootstrapConfig.sync_relations_on_bootstrap - config loading
+# 10. BootstrapConfig.sync_memory_on_bootstrap - config loading
 # ===========================================================================
 
 
 class TestBootstrapConfigDefault:
     def test_default_is_false(self):
         cfg = BootstrapConfig()
-        assert cfg.sync_relations_on_bootstrap is False
+        assert cfg.sync_memory_on_bootstrap is False
 
     def test_explicit_true(self):
-        cfg = BootstrapConfig(sync_relations_on_bootstrap=True)
-        assert cfg.sync_relations_on_bootstrap is True
+        cfg = BootstrapConfig(sync_memory_on_bootstrap=True)
+        assert cfg.sync_memory_on_bootstrap is True
 
     def test_explicit_false(self):
-        cfg = BootstrapConfig(sync_relations_on_bootstrap=False)
-        assert cfg.sync_relations_on_bootstrap is False
+        cfg = BootstrapConfig(sync_memory_on_bootstrap=False)
+        assert cfg.sync_memory_on_bootstrap is False
 
     def test_env_var_sets_true(self, monkeypatch):
-        """groundmemory_BOOTSTRAP__SYNC_RELATIONS_ON_BOOTSTRAP=true must be honoured."""
-        monkeypatch.setenv("groundmemory_BOOTSTRAP__SYNC_RELATIONS_ON_BOOTSTRAP", "true")
+        """groundmemory_BOOTSTRAP__SYNC_MEMORY_ON_BOOTSTRAP=true must be honoured."""
+        monkeypatch.setenv("groundmemory_BOOTSTRAP__SYNC_MEMORY_ON_BOOTSTRAP", "true")
         import groundmemory.config as _cfg_mod
 
         monkeypatch.setattr(_cfg_mod, "_load_yaml_config", lambda filename="groundmemory.yaml": {})
         cfg = groundmemoryConfig.auto()
-        assert cfg.bootstrap.sync_relations_on_bootstrap is True
+        assert cfg.bootstrap.sync_memory_on_bootstrap is True
 
     def test_env_var_sets_false(self, monkeypatch):
-        monkeypatch.setenv("groundmemory_BOOTSTRAP__SYNC_RELATIONS_ON_BOOTSTRAP", "false")
+        monkeypatch.setenv("groundmemory_BOOTSTRAP__SYNC_MEMORY_ON_BOOTSTRAP", "false")
         import groundmemory.config as _cfg_mod
 
         monkeypatch.setattr(_cfg_mod, "_load_yaml_config", lambda filename="groundmemory.yaml": {})
         cfg = groundmemoryConfig.auto()
-        assert cfg.bootstrap.sync_relations_on_bootstrap is False
+        assert cfg.bootstrap.sync_memory_on_bootstrap is False

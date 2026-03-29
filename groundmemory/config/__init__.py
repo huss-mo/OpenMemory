@@ -304,14 +304,15 @@ class BootstrapConfig(BaseSettings):
         INJECT_AGENTS            - inject AGENTS.md
         INJECT_DAILY_LOGS        - inject today's/yesterday's daily logs
         INJECT_RELATIONS         - inject RELATIONS.md
-        SYNC_RELATIONS_ON_BOOTSTRAP - reconcile SQLite relations table from
-                                      RELATIONS.md before injecting context.
-                                      Useful when a user manually edits
-                                      RELATIONS.md outside the agent (e.g. in a
-                                      text editor) and wants the internal graph
-                                      to be refreshed at the next session start.
-                                      Disabled by default; enable it if you edit
-                                      RELATIONS.md by hand between sessions.
+        SYNC_MEMORY_ON_BOOTSTRAP - re-index all workspace files that have changed
+                                   since the last session before injecting context.
+                                   Uses SHA-256 content hashing, so only files
+                                   whose content actually changed are re-chunked
+                                   and re-embedded. Relations table is reconciled
+                                   automatically when RELATIONS.md is among the
+                                   changed files.
+                                   Disabled by default; enable when you edit
+                                   memory files manually between sessions.
     """
 
     model_config = SettingsConfigDict(
@@ -327,7 +328,7 @@ class BootstrapConfig(BaseSettings):
     inject_agents: bool = True
     inject_daily_logs: bool = True
     inject_relations: bool = True
-    sync_relations_on_bootstrap: bool = False
+    sync_memory_on_bootstrap: bool = False
 
 
 # ---------------------------------------------------------------------------

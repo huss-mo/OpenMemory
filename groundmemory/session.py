@@ -100,24 +100,25 @@ class MemorySession:
         Build the system-prompt injection string containing the agent's
         long-term memory context.
 
-        If ``config.bootstrap.sync_relations_on_bootstrap`` is ``True``,
-        the SQLite relations table is reconciled from RELATIONS.md before
-        context is injected.  Enable this option when you edit RELATIONS.md
-        manually outside the agent (e.g. in a text editor) so that changes
-        are reflected at the next session start.
+        If ``config.bootstrap.sync_memory_on_bootstrap`` is ``True``,
+        all workspace files are re-indexed (via ``sync_workspace``) before
+        context is injected.  Enable this option when you edit memory files
+        outside the agent (e.g. in a text editor or via git) so that the
+        SQLite/vector index is always consistent with disk at session start.
 
         Returns the formatted string (may be empty if all files are absent).
         """
-        if self.config.bootstrap.sync_relations_on_bootstrap:
+        if self.config.bootstrap.sync_memory_on_bootstrap:
             try:
-                from groundmemory.core.relations import sync_relations_from_file
-
-                sync_relations_from_file(
-                    self.workspace.relations_file, self.index
+                sync_workspace(
+                    workspace=self.workspace,
+                    index=self.index,
+                    provider=self.provider,
+                    chunking=self.config.chunking,
                 )
             except Exception:  # noqa: BLE001
                 logger.warning(
-                    "sync_relations_on_bootstrap failed; continuing without relation sync",
+                    "sync_memory_on_bootstrap failed; continuing without sync",
                     exc_info=True,
                 )
 

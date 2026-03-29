@@ -130,16 +130,16 @@ bootstrap:
   inject_daily_logs: true        # daily/YYYY-MM-DD.md (today + yesterday)
   inject_relations: true         # RELATIONS.md
 
-  # Reconcile the SQLite relations table from RELATIONS.md before injecting context.
+  # Re-index all workspace files (MEMORY.md, USER.md, daily logs, RELATIONS.md,
+  # etc.) at the start of every session before injecting context.
   #
-  # Purpose: if you manually edit RELATIONS.md outside the agent (e.g. in a text
-  # editor or version-control merge), SQLite may be out of date. Setting this to
-  # true reconciles it from the file at the start of every session so that changes
-  # are always reflected.
+  # Purpose: if you edit memory files outside the agent (e.g. in a text editor
+  # or via git), the SQLite/vector index may be out of date. Enabling this
+  # ensures the index is always consistent with the files on disk.
   #
-  # Leave disabled (false) in normal usage - the agent keeps both stores in sync
-  # automatically via memory_relate, memory_replace_*, and memory_delete.
-  sync_relations_on_bootstrap: false
+  # Leave disabled (false) in normal usage - the agent keeps the index in sync
+  # automatically after every memory_write / memory_relate / memory_delete call.
+  sync_memory_on_bootstrap: false
 
 # ---------------------------------------------------------------------------
 # Compaction - pre-context-window-flush hooks
