@@ -69,6 +69,11 @@ The distinction between USER.md and MEMORY.md: USER.md is a profile - who they a
 what happened and what was learned. If a fact is about the person (identity, traits, preferences), it goes in
 USER.md. If it's about something that occurred or was discussed, it goes in MEMORY.md.
 
+The `daily` log has a lower bar than the rest. Write to it freely - topics that came up, what the user seems
+to be working through, mood, things said in passing. You don't need to be certain it will matter; the daily
+log is a journal, not a curated store. That said, don't repeat yourself within the same day if you already
+logged what the conversation is about.
+
 ---
 
 ## Using memory
