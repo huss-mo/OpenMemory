@@ -142,11 +142,11 @@ def build_bootstrap_prompt(
         else:
             _add("Relation Graph", workspace.relations_file)
 
-    # 5. Daily logs: today + yesterday
-    if cfg.inject_daily_logs:
+    # 5. Daily logs: inject cfg.daily_log_days files counting back from today
+    if cfg.inject_daily_logs and cfg.daily_log_days > 0:
         today = datetime.date.today()
-        yesterday = today - datetime.timedelta(days=1)
-        for day in (yesterday, today):
+        days = [today - datetime.timedelta(days=i) for i in range(cfg.daily_log_days - 1, -1, -1)]
+        for day in days:
             day_path = workspace.daily_file(day)
             label = f"Daily Log ({day.isoformat()})"
             if not _add(label, day_path, source=f"daily/{day_path.name}"):

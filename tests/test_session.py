@@ -142,6 +142,68 @@ class TestSessionBootstrap:
         assert isinstance(result, str)
         assert len(result) > 0
 
+    def test_daily_log_days_default_is_1(self):
+        from groundmemory.config import BootstrapConfig
+        assert BootstrapConfig().daily_log_days == 1
+
+    def test_daily_log_days_zero_excludes_daily(self, tmp_path):
+        """daily_log_days=0 must not inject any daily log even if inject_daily_logs=True."""
+        import datetime
+        from groundmemory.config import BootstrapConfig, EmbeddingConfig, groundmemoryConfig
+        cfg = groundmemoryConfig(
+            root_dir=tmp_path,
+            embedding=EmbeddingConfig(provider="none"),
+            bootstrap=BootstrapConfig(daily_log_days=0),
+        )
+        s = MemorySession.create("dl_zero", config=cfg)
+        try:
+            s.execute_tool("memory_write", file="daily", content="Should not appear.")
+            result = s.bootstrap()
+            assert "Should not appear." not in result
+        finally:
+            s.close()
+
+    def test_daily_log_days_1_injects_only_today(self, tmp_path):
+        """daily_log_days=1 injects today's log but not yesterday's."""
+        import datetime
+        from groundmemory.config import BootstrapConfig, EmbeddingConfig, groundmemoryConfig
+        cfg = groundmemoryConfig(
+            root_dir=tmp_path,
+            embedding=EmbeddingConfig(provider="none"),
+            bootstrap=BootstrapConfig(daily_log_days=1),
+        )
+        s = MemorySession.create("dl_one", config=cfg)
+        try:
+            # Write a fake "yesterday" log directly
+            yesterday = datetime.date.today() - datetime.timedelta(days=1)
+            s.workspace.daily_file(yesterday).write_text("Yesterday entry.", encoding="utf-8")
+            s.execute_tool("memory_write", file="daily", content="Today entry.")
+            result = s.bootstrap()
+            assert "Today entry." in result
+            assert "Yesterday entry." not in result
+        finally:
+            s.close()
+
+    def test_daily_log_days_2_injects_today_and_yesterday(self, tmp_path):
+        """daily_log_days=2 injects both today's and yesterday's logs."""
+        import datetime
+        from groundmemory.config import BootstrapConfig, EmbeddingConfig, groundmemoryConfig
+        cfg = groundmemoryConfig(
+            root_dir=tmp_path,
+            embedding=EmbeddingConfig(provider="none"),
+            bootstrap=BootstrapConfig(daily_log_days=2),
+        )
+        s = MemorySession.create("dl_two", config=cfg)
+        try:
+            yesterday = datetime.date.today() - datetime.timedelta(days=1)
+            s.workspace.daily_file(yesterday).write_text("Yesterday entry.", encoding="utf-8")
+            s.execute_tool("memory_write", file="daily", content="Today entry.")
+            result = s.bootstrap()
+            assert "Today entry." in result
+            assert "Yesterday entry." in result
+        finally:
+            s.close()
+
 
 class TestSessionCompaction:
     def test_should_compact_false_when_tokens_far_from_limit(self, session):

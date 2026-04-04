@@ -626,7 +626,7 @@ Semantic deduplication: before inserting, the new triple is embedded and compare
 Keeps the SQLite index consistent with the Markdown files using SHA-256 content hashing (not timestamps). `sync_workspace` walks all files and re-indexes changed ones. `sync_file` force-syncs a single file - called immediately after every `memory_write` so new content is searchable within the same session.
 
 #### 9. Bootstrap Injector (`GroundMemory/bootstrap/injector.py`)
-Assembles a system-prompt block from workspace files, respecting per-file and total character budgets (`max_chars_per_file`, `max_total_chars`). Truncated files get a visible `[TRUNCATED - use memory_get to read the rest]` marker. Injects (in order): long-term memory, user profile, agent instructions, relation graph, yesterday's and today's daily logs.
+Assembles a system-prompt block from workspace files, respecting per-file and total character budgets (`max_chars_per_file`, `max_total_chars`). Truncated files get a visible `[TRUNCATED - use memory_get to read the rest]` marker. Injects (in order): long-term memory, user profile, agent instructions, relation graph, and daily logs. The number of daily log files injected is controlled by `daily_log_days` (default: 1 = today only; set to 2 for today + yesterday).
 
 #### 10. Compaction Hooks (`GroundMemory/bootstrap/compaction.py`)
 `should_flush(current_tokens, context_window, cfg)` returns `True` when the remaining context budget drops below the configured threshold. `get_compaction_prompts(cfg)` returns the `{system, user}` messages the agent uses to flush important facts to storage before the window is summarised.
@@ -867,28 +867,31 @@ chunking:
 # ---------------------------------------------------------------------------
 bootstrap:
   # Maximum characters per file before a truncation warning is appended
-  max_chars_per_file: 20000
+  max_chars_per_file: 10000
 
   # Maximum total characters injected across all files
-  max_total_chars: 150000
+  max_total_chars: 50000
 
   # Which memory files to inject into the system prompt
   inject_long_term_memory: true  # MEMORY.md
   inject_user_profile: true      # USER.md
   inject_agents: true            # AGENTS.md
-  inject_daily_logs: true        # daily/YYYY-MM-DD.md (today + yesterday)
+  inject_daily_logs: true        # daily/YYYY-MM-DD.md
   inject_relations: true         # RELATIONS.md
 
-  # Reconcile the SQLite relations table from RELATIONS.md before injecting context.
+  # Number of daily log files to inject, counting back from today.
+  # 1 = today only (default), 2 = today + yesterday, 0 = none.
+  daily_log_days: 1
+
+  # Re-index all workspace files at the start of every session before injecting context.
   #
-  # Purpose: if you manually edit RELATIONS.md outside the agent (e.g. in a text
-  # editor or version-control merge), SQLite may be out of date. Setting this to
-  # true reconciles it from the file at the start of every session so that changes
-  # are always reflected.
+  # Purpose: if you edit memory files outside the agent (e.g. in a text editor
+  # or via git), the SQLite/vector index may be out of date. Enabling this
+  # ensures the index is always consistent with the files on disk.
   #
-  # Leave disabled (false) in normal usage - the agent keeps both stores in sync
-  # automatically via memory_relate, memory_replace_*, and memory_delete.
-  sync_relations_on_bootstrap: false
+  # Leave disabled (false) in normal usage - the agent keeps the index in sync
+  # automatically after every memory_write / memory_relate / memory_delete call.
+  sync_memory_on_bootstrap: false
 
 # ---------------------------------------------------------------------------
 # Compaction - pre-context-window-flush hooks
@@ -1021,14 +1024,15 @@ All settings are available as environment variables using the `GROUNDMEMORY_` pr
 
 | Variable | Description | Default |
 |---|---|---|
-| `GROUNDMEMORY_BOOTSTRAP__MAX_CHARS_PER_FILE` | Max chars per injected file before truncation | `20000` |
-| `GROUNDMEMORY_BOOTSTRAP__MAX_TOTAL_CHARS` | Max total chars across all injected files | `150000` |
+| `GROUNDMEMORY_BOOTSTRAP__MAX_CHARS_PER_FILE` | Max chars per injected file before truncation | `10000` |
+| `GROUNDMEMORY_BOOTSTRAP__MAX_TOTAL_CHARS` | Max total chars across all injected files | `50000` |
 | `GROUNDMEMORY_BOOTSTRAP__INJECT_LONG_TERM_MEMORY` | Inject MEMORY.md | `true` |
 | `GROUNDMEMORY_BOOTSTRAP__INJECT_USER_PROFILE` | Inject USER.md | `true` |
 | `GROUNDMEMORY_BOOTSTRAP__INJECT_AGENTS` | Inject AGENTS.md | `true` |
-| `GROUNDMEMORY_BOOTSTRAP__INJECT_DAILY_LOGS` | Inject today's + yesterday's daily logs | `true` |
+| `GROUNDMEMORY_BOOTSTRAP__INJECT_DAILY_LOGS` | Enable/disable daily log injection entirely | `true` |
 | `GROUNDMEMORY_BOOTSTRAP__INJECT_RELATIONS` | Inject RELATIONS.md | `true` |
-| `GROUNDMEMORY_BOOTSTRAP__SYNC_RELATIONS_ON_BOOTSTRAP` | Reconcile SQLite relations from RELATIONS.md at session start. Enable when you edit RELATIONS.md manually outside the agent so that changes are reflected at the next session start. | `false` |
+| `GROUNDMEMORY_BOOTSTRAP__DAILY_LOG_DAYS` | Number of daily log files to inject counting back from today. `1` = today only, `2` = today + yesterday, `0` = none. | `1` |
+| `GROUNDMEMORY_BOOTSTRAP__SYNC_MEMORY_ON_BOOTSTRAP` | Re-index all workspace files at session start. Enable when you edit memory files outside the agent so the index stays consistent with disk. | `false` |
 
 **General**
 

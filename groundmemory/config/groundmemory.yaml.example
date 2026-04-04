@@ -118,17 +118,21 @@ chunking:
 # ---------------------------------------------------------------------------
 bootstrap:
   # Maximum characters per file before a truncation warning is appended
-  max_chars_per_file: 20000
+  max_chars_per_file: 10000
 
   # Maximum total characters injected across all files
-  max_total_chars: 150000
+  max_total_chars: 50000
 
   # Which memory files to inject into the system prompt
   inject_long_term_memory: true  # MEMORY.md
   inject_user_profile: true      # USER.md
   inject_agents: true            # AGENTS.md
-  inject_daily_logs: true        # daily/YYYY-MM-DD.md (today + yesterday)
+  inject_daily_logs: true        # daily/YYYY-MM-DD.md
   inject_relations: true         # RELATIONS.md
+
+  # Number of daily log files to inject, counting back from today.
+  # 1 = today only (default), 2 = today + yesterday, 0 = none.
+  daily_log_days: 1
 
   # Re-index all workspace files (MEMORY.md, USER.md, daily logs, RELATIONS.md,
   # etc.) at the start of every session before injecting context.

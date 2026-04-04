@@ -304,6 +304,8 @@ class BootstrapConfig(BaseSettings):
         INJECT_AGENTS            - inject AGENTS.md
         INJECT_DAILY_LOGS        - inject today's/yesterday's daily logs
         INJECT_RELATIONS         - inject RELATIONS.md
+        DAILY_LOG_DAYS           - number of daily log files to inject, counting back
+                                   from today (1 = today only, 2 = today+yesterday, 0 = none)
         SYNC_MEMORY_ON_BOOTSTRAP - re-index all workspace files that have changed
                                    since the last session before injecting context.
                                    Uses SHA-256 content hashing, so only files
@@ -321,13 +323,16 @@ class BootstrapConfig(BaseSettings):
         extra="ignore",
     )
 
-    max_chars_per_file: int = 20_000
-    max_total_chars: int = 150_000
+    max_chars_per_file: int = 10_000
+    max_total_chars: int = 50_000
     inject_long_term_memory: bool = True
     inject_user_profile: bool = True
     inject_agents: bool = True
     inject_daily_logs: bool = True
     inject_relations: bool = True
+    # Number of daily log files to inject, counting back from today.
+    # 1 = today only, 2 = today + yesterday, 0 = disabled (same as inject_daily_logs=False).
+    daily_log_days: int = 1
     sync_memory_on_bootstrap: bool = False
 
 
