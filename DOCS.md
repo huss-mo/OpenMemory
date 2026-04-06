@@ -298,13 +298,35 @@ GroundMemory speaks standard MCP over HTTP, so any MCP-compatible client works. 
 }
 ```
 
-For  clients that use the `stdio` transpost, add the following block instead:
+For clients that use the `stdio` transport, add the following block instead:
 ```json
 {
-  "mcpServers": { 
-    "GroundMemory": { 
-      "command": "npx", 
-      "args": ["mcp-remote@latest", "http://<server-ip>:4242/mcp", "--allow-http"] 
+  "mcpServers": {
+    "GroundMemory": {
+      "command": "npx",
+      "args": [
+        "mcp-remote@latest", 
+        "http://<server-ip>:4242/mcp", 
+        "--allow-http"
+      ]
+    }
+  }
+}
+```
+
+If an api key is set on the server, add `--header` and the token value to the `args` list (both lines are required):
+```json
+{
+  "mcpServers": {
+    "GroundMemory": {
+      "command": "npx",
+      "args": [
+        "mcp-remote@latest",
+        "http://<server-ip>:4242/mcp",
+        "--allow-http",
+        "--header",
+        "Authorization: Bearer your-secret-token"
+      ]
     }
   }
 }
