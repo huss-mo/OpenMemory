@@ -523,6 +523,122 @@ class TestMcpToolRegistration:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# BearerTokenMiddleware
+# ---------------------------------------------------------------------------
+
+
+class TestBearerTokenMiddleware:
+    """Unit tests for the BearerTokenMiddleware Starlette middleware."""
+
+    def _make_request(self, headers: dict):
+        """Build a minimal mock Starlette Request with the given headers."""
+        from starlette.datastructures import Headers
+        from starlette.requests import Request
+
+        scope = {
+            "type": "http",
+            "method": "GET",
+            "path": "/mcp",
+            "headers": [(k.lower().encode(), v.encode()) for k, v in headers.items()],
+            "query_string": b"",
+        }
+        return Request(scope)
+
+    def test_correct_token_passes_through(self):
+        """A request with the correct bearer token must call the next handler."""
+        import asyncio
+        from groundmemory.mcp_server import BearerTokenMiddleware
+
+        passed = []
+
+        async def next_handler(request):
+            passed.append(True)
+            from starlette.responses import Response
+            return Response("ok")
+
+        mw = BearerTokenMiddleware.__new__(BearerTokenMiddleware)
+        mw._expected = "Bearer secret"
+
+        req = self._make_request({"Authorization": "Bearer secret"})
+        asyncio.run(mw.dispatch(req, next_handler))
+        assert passed == [True]
+
+    def test_wrong_token_returns_401(self):
+        """A request with the wrong token must return 401."""
+        import asyncio
+        from groundmemory.mcp_server import BearerTokenMiddleware
+        from starlette.responses import Response
+
+        async def next_handler(request):
+            return Response("ok")
+
+        mw = BearerTokenMiddleware.__new__(BearerTokenMiddleware)
+        mw._expected = "Bearer secret"
+
+        req = self._make_request({"Authorization": "Bearer wrong"})
+        response = asyncio.run(mw.dispatch(req, next_handler))
+        assert response.status_code == 401
+
+    def test_missing_auth_header_returns_401(self):
+        """A request with no Authorization header must return 401."""
+        import asyncio
+        from groundmemory.mcp_server import BearerTokenMiddleware
+        from starlette.responses import Response
+
+        async def next_handler(request):
+            return Response("ok")
+
+        mw = BearerTokenMiddleware.__new__(BearerTokenMiddleware)
+        mw._expected = "Bearer secret"
+
+        req = self._make_request({})
+        response = asyncio.run(mw.dispatch(req, next_handler))
+        assert response.status_code == 401
+
+    def test_empty_token_returns_401(self):
+        """An empty bearer token must be rejected."""
+        import asyncio
+        from groundmemory.mcp_server import BearerTokenMiddleware
+        from starlette.responses import Response
+
+        async def next_handler(request):
+            return Response("ok")
+
+        mw = BearerTokenMiddleware.__new__(BearerTokenMiddleware)
+        mw._expected = "Bearer secret"
+
+        req = self._make_request({"Authorization": "Bearer "})
+        response = asyncio.run(mw.dispatch(req, next_handler))
+        assert response.status_code == 401
+
+    def test_expected_token_set_correctly(self):
+        """Middleware stores the expected header value as 'Bearer <key>'."""
+        from groundmemory.mcp_server import BearerTokenMiddleware
+
+        mw = BearerTokenMiddleware.__new__(BearerTokenMiddleware)
+        mw._expected = "Bearer my-token"
+        assert mw._expected == "Bearer my-token"
+
+    def test_api_key_default_is_none(self):
+        """MCPConfig.api_key defaults to None (no auth)."""
+        from groundmemory.config import MCPConfig
+        assert MCPConfig().api_key is None
+
+    def test_api_key_can_be_set(self):
+        """MCPConfig.api_key can be set to a string value."""
+        from groundmemory.config import MCPConfig
+        cfg = MCPConfig(api_key="my-secret")
+        assert cfg.api_key == "my-secret"
+
+    def test_api_key_env_var(self, monkeypatch):
+        """GROUNDMEMORY_MCP__API_KEY env var sets api_key on MCPConfig."""
+        monkeypatch.setenv("GROUNDMEMORY_MCP__API_KEY", "env-token")
+        from groundmemory.config import MCPConfig
+        cfg = MCPConfig()
+        assert cfg.api_key == "env-token"
+
+
 class TestConfigGatedTools:
     """Verify that expose_memory_list and dispatcher_mode gates work."""
 

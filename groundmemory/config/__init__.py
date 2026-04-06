@@ -272,6 +272,9 @@ class MCPConfig(BaseSettings):
                               MCP server (DNS rebinding protection). "localhost" and
                               "127.0.0.1" are always allowed. Add your LAN IP or public
                               hostname when accessing the server from another machine.
+        API_KEY             - static bearer token required on every request.
+                              When unset (default), no authentication is enforced.
+                              Set this when exposing the server beyond localhost.
     """
 
     model_config = SettingsConfigDict(
@@ -291,6 +294,10 @@ class MCPConfig(BaseSettings):
     # Add your LAN IP (e.g. "192.168.1.50:4242") to allow access from other machines.
     # Separate multiple values with commas. Leave empty (default) for local-only access.
     allowed_hosts: str = ""
+    # Static bearer token for request authentication.
+    # When None (default), no authentication is enforced.
+    # When set, every request must include: Authorization: Bearer <api_key>
+    api_key: Optional[str] = None
 
 
 class BootstrapConfig(BaseSettings):

@@ -165,9 +165,34 @@ For Docker, uncomment the two required network-access lines in `docker-compose.y
 
 `allowed_hosts` is the DNS-rebinding protection allowlist - it controls which `Host:` header values the server accepts. List every address clients will use to reach the server (e.g. `192.168.1.50:4242`). `localhost` and `127.0.0.1` are always allowed implicitly. Only exact strings are supported - wildcards and CIDR ranges are not.
 
+**Authentication**
+
+When exposing the server beyond localhost, set `GROUNDMEMORY_MCP__API_KEY` (or `mcp.api_key` in YAML) to a secret token. Every request must then include:
+
+```
+Authorization: Bearer <your-token>
+```
+
+MCP clients that support custom headers (Cline, Cursor, Claude Desktop) can be configured like this:
+
+```json
+{
+  "mcpServers": {
+    "GroundMemory": {
+      "url": "http://192.168.1.50:4242/mcp",
+      "headers": {
+        "Authorization": "Bearer <your-secret-token>"
+      }
+    }
+  }
+}
+```
+
+When `api_key` is not set (the default), no authentication is enforced and the server behaves exactly as before - no breaking change.
+
 **Public internet access**
 
-GroundMemory has no authentication layer. Do not expose it directly on the public internet. Use a reverse proxy (nginx, Caddy, Traefik) with TLS and authentication in front of it.
+Do not expose GroundMemory directly on the public internet. Use a reverse proxy (nginx, Caddy, Traefik) with TLS in front of it, and set `api_key` for authentication.
 
 The `GROUNDMEMORY_MCP__FORWARDED_ALLOW_IPS` setting controls which upstream IPs uvicorn trusts to pass `X-Forwarded-For` / `X-Real-IP` headers. Set it to your proxy's internal IP when running behind a reverse proxy (default: `127.0.0.1`).
 
@@ -978,6 +1003,16 @@ compaction:
   #   host: "127.0.0.1"
   #   allowed_hosts: "yourdomain.com"
   #   forwarded_allow_ips: "127.0.0.1"
+  #
+  # --- Authentication ---
+  #
+  # Static bearer token required on every request. When unset (default), no
+  # authentication is enforced. Set this when exposing the server beyond localhost.
+  #
+  # Clients must send: Authorization: Bearer <your-token>
+  #
+  # Generate with `openssl rand -base64 32`
+  # api_key: ""
 ```
 
 ---
@@ -1049,6 +1084,7 @@ All settings are available as environment variables using the `GROUNDMEMORY_` pr
 | `GROUNDMEMORY_MCP__PORT` | TCP port the server listens on | `4242` |
 | `GROUNDMEMORY_MCP__ALLOWED_HOSTS` | Comma-separated list of `Host:` header values to allow (DNS-rebinding protection). `localhost` and `127.0.0.1` are always allowed. Required when `HOST=0.0.0.0`. | `` |
 | `GROUNDMEMORY_MCP__FORWARDED_ALLOW_IPS` | IPs uvicorn trusts to pass `X-Forwarded-For` headers. Not needed for plain LAN access - only set when a reverse proxy sits in front of GroundMemory. | `127.0.0.1` |
+| `GROUNDMEMORY_MCP__API_KEY` | Static bearer token required on every request. When unset (default), no authentication is enforced. Set when exposing the server beyond localhost. Clients must send `Authorization: Bearer <token>`. | *(unset)* |
 
 **Configuration priority (highest wins):**
 

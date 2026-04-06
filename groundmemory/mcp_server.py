@@ -5,6 +5,9 @@ import atexit
 import json
 from typing import Optional
 
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
+
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 
@@ -221,6 +224,31 @@ def memory_bootstrap_prompt() -> str:
 
 
 # ---------------------------------------------------------------------------
+# Bearer token authentication middleware
+# ---------------------------------------------------------------------------
+
+
+class BearerTokenMiddleware(BaseHTTPMiddleware):
+    """Starlette middleware that enforces a static bearer token on every request.
+
+    Requests must include the header:
+        Authorization: Bearer <api_key>
+
+    Any request with a missing or incorrect token receives a 401 response.
+    This middleware is only added to the app when ``mcp.api_key`` is configured.
+    """
+
+    def __init__(self, app, api_key: str) -> None:
+        super().__init__(app)
+        self._expected = f"Bearer {api_key}"
+
+    async def dispatch(self, request, call_next):
+        if request.headers.get("Authorization") != self._expected:
+            return Response("Unauthorized", status_code=401)
+        return await call_next(request)
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -233,6 +261,8 @@ def main() -> None:
     _seed_example_config()
     cfg = groundmemoryConfig.auto()
     app = mcp.streamable_http_app()
+    if cfg.mcp.api_key:
+        app = BearerTokenMiddleware(app, cfg.mcp.api_key)
     uvicorn.run(
         app,
         host=cfg.mcp.host,

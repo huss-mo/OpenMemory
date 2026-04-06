@@ -243,3 +243,14 @@ compaction:
   #   host: "127.0.0.1"
   #   allowed_hosts: "yourdomain.com"
   #   forwarded_allow_ips: "127.0.0.1"
+  #
+  # --- Authentication ---
+  #
+  # Static bearer token required on every request. When unset (default), no
+  # authentication is enforced. Set this when exposing the server beyond localhost.
+  #
+  # Clients must send: Authorization: Bearer <your-token>
+  #
+  # Generate with `openssl rand -base64 32`
+  # api_key: ""
+  
