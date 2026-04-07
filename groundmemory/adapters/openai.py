@@ -145,11 +145,7 @@ def run_agent_loop(
     -------
     list[dict]  Final message history.
     """
-    from groundmemory.bootstrap.compaction import should_flush, get_compaction_prompts
-
     tools = get_openai_tools()
-    compaction_cfg = session.config.compaction
-    _flushed = False  # only flush once per loop
 
     for _ in range(max_iterations):
         response = client.chat.completions.create(
@@ -160,23 +156,6 @@ def run_agent_loop(
         )
         choice = response.choices[0]
         messages = handle_tool_calls(session, response, messages)
-
-        # Check compaction threshold and inject a flush turn if needed
-        if not _flushed and compaction_cfg.enabled:
-            usage = response.usage
-            used = (usage.prompt_tokens or 0) + (usage.completion_tokens or 0)
-            if should_flush(used, compaction_cfg):
-                prompts = get_compaction_prompts(compaction_cfg)
-                messages.append({"role": "user", "content": prompts["user"]})
-                # One dedicated flush turn - let the model write to memory
-                flush_response = client.chat.completions.create(
-                    model=model,
-                    messages=[{"role": "system", "content": prompts["system"]}] + messages,
-                    tools=tools,
-                    **create_kwargs,
-                )
-                messages = handle_tool_calls(session, flush_response, messages)
-                _flushed = True
 
         # Stop when the model is done calling tools
         if choice.finish_reason != "tool_calls":

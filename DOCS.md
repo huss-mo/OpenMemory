@@ -35,11 +35,10 @@ For a project overview and quick start, see [README.md](README.md).
       - [7. Relation Graph (`GroundMemory/core/relations.py`)](#7-relation-graph-groundmemorycorerelationspy)
       - [8. Sync (`GroundMemory/core/sync.py`)](#8-sync-groundmemorycoresyncpy)
       - [9. Bootstrap Injector (`GroundMemory/bootstrap/injector.py`)](#9-bootstrap-injector-groundmemorybootstrapinjectorpy)
-      - [10. Compaction Hooks (`GroundMemory/bootstrap/compaction.py`)](#10-compaction-hooks-groundmemorybootstrapcompactionpy)
-      - [11. Tools (`GroundMemory/tools/`)](#11-tools-groundmemorytools)
-      - [12. LLM Adapters (`GroundMemory/adapters/`)](#12-llm-adapters-groundmemoryadapters)
-      - [13. Session (`GroundMemory/session.py`)](#13-session-groundmemorysessionpy)
-      - [13 (note). Session vs Workspace - not two different things](#13-note-session-vs-workspace---not-two-different-things)
+      - [10. Tools (`GroundMemory/tools/`)](#10-tools-groundmemorytools)
+      - [11. LLM Adapters (`GroundMemory/adapters/`)](#11-llm-adapters-groundmemoryadapters)
+      - [12. Session (`GroundMemory/session.py`)](#12-session-groundmemorysessionpy)
+      - [12 (note). Session vs Workspace - not two different things](#12-note-session-vs-workspace---not-two-different-things)
   - [Data Flow](#data-flow)
   - [Tech Stack](#tech-stack)
   - [Configuration](#configuration)
@@ -450,7 +449,7 @@ for block in response.content:
 ```
 
 > **Complete runnable agents** - `examples/openai_agent.py` and `examples/anthropic_agent.py`
-> show a full interactive loop with workspace sync on startup, compaction detection, and
+> show a full interactive loop with workspace sync on startup and
 > graceful shutdown. Run them with:
 > ```bash
 > uv run python examples/openai_agent.py
@@ -675,12 +674,7 @@ Keeps the SQLite index consistent with the Markdown files using SHA-256 content 
 #### 9. Bootstrap Injector (`GroundMemory/bootstrap/injector.py`)
 Assembles a system-prompt block from workspace files, respecting per-file and total character budgets (`max_chars_per_file`, `max_total_chars`). Truncated files get a visible `[TRUNCATED - use memory_get to read the rest]` marker. Injects (in order): long-term memory, user profile, agent instructions, relation graph, and daily logs. The number of daily log files injected is controlled by `daily_log_days` (default: 1 = today only; set to 2 for today + yesterday).
 
-#### 10. Compaction Hooks (`GroundMemory/bootstrap/compaction.py`)
-`should_flush(current_tokens, context_window, cfg)` returns `True` when the remaining context budget drops below the configured threshold. `get_compaction_prompts(cfg)` returns the `{system, user}` messages the agent uses to flush important facts to storage before the window is summarised.
-
-> **Python API only.** Compaction hooks are only meaningful when you control the message loop yourself - i.e. when using the Python API directly (via `session.should_compact()` and `session.compaction_prompts()`). When GroundMemory is running as an MCP server, it has no visibility into the client's conversation history or token usage, so compaction cannot be triggered automatically. In that case, compaction is the responsibility of the MCP client or agent framework.
-
-#### 11. Tools (`GroundMemory/tools/`)
+#### 10. Tools (`GroundMemory/tools/`)
 Four core tools + two optional (config-gated) tools exposed to the LLM via function calling:
 
 | Tool | File | Notes |
@@ -704,15 +698,15 @@ Four core tools + two optional (config-gated) tools exposed to the LLM via funct
 | `is_immutable(file)` | Return `True` for `MEMORY.md` and `daily/*.md` |
 | `sync_after_edit(session, resolved, is_relations, base_payload)` | Re-index a file after an in-place edit and return `ok(payload)`. Calls `sync_file` (and, when `is_relations=True`, `sync_relations_from_file`) non-fatally - sync failures add a `warning` key rather than raising. |
 
-#### 12. LLM Adapters (`GroundMemory/adapters/`)
+#### 11. LLM Adapters (`GroundMemory/adapters/`)
 Thin schema-conversion + agentic-loop helpers:
 - **`adapters/openai.py`** - converts schemas to OpenAI function-calling format; `handle_tool_calls` dispatches tool calls and appends results to the message list; `run_agent_loop` iterates until the model stops calling tools.
 - **`adapters/anthropic.py`** - same for Anthropic's `tool_use` / `tool_result` block format.
 
-#### 13. Session (`GroundMemory/session.py`)
-`MemorySession` is the composition root that holds references to `Workspace`, `MemoryIndex`, and `EmbeddingProvider`. It exposes `execute_tool`, `bootstrap`, `sync`, `should_compact`, and `compaction_prompts` as the primary API surface.
+#### 12. Session (`GroundMemory/session.py`)
+`MemorySession` is the composition root that holds references to `Workspace`, `MemoryIndex`, and `EmbeddingProvider`. It exposes `execute_tool`, `bootstrap`, and `sync` as the primary API surface.
 
-#### 13 (note). Session vs Workspace - not two different things
+#### 12 (note). Session vs Workspace - not two different things
 `MemorySession` **is** the workspace session - there is no meaningful distinction between the two concepts in GroundMemory. `Workspace` is the low-level filesystem handle; `MemorySession` is the high-level runtime object that wraps it together with the index and embedding provider. When you call `MemorySession.create("my-project")`, it resolves the path as `~/.groundmemory/my-project` - a single directory, not a nested one.
 
 ---
@@ -767,10 +761,6 @@ LLM receives system prompt + tool schemas + user message
      ▼
 Agent response returned to user
      │
-     (optionally)
-     ▼
-session.should_compact(current_tokens, context_window)
-     │  True → inject compaction_prompts → agent flushes session to memory_write
      ▼
 Next session: session.bootstrap() reloads persisted facts
 ```
@@ -939,35 +929,6 @@ bootstrap:
   # Leave disabled (false) in normal usage - the agent keeps the index in sync
   # automatically after every memory_write / memory_relate / memory_delete call.
   sync_memory_on_bootstrap: false
-
-# ---------------------------------------------------------------------------
-# Compaction - pre-context-window-flush hooks
-# ---------------------------------------------------------------------------
-#
-# When token usage crosses the flush threshold the adapter injects a message
-# asking the agent to call memory_write for anything worth keeping, before the
-# LLM provider silently drops or summarises old messages.
-#
-# Flush fires when: current_tokens >= min(soft_threshold_tokens, context_window_tokens - reserve_floor_tokens)
-compaction:
-  # Enable compaction detection
-  enabled: true
-
-  # Total token capacity of the model being used.
-  # Used to derive the hard flush limit together with reserve_floor_tokens.
-  context_window_tokens: 128000
-
-  # Flush when this many tokens have been *consumed* in the context window
-  # (counted from zero - this is token usage, not tokens remaining).
-  soft_threshold_tokens: 64000
-
-  # Always keep this many tokens free for the model's reply.
-  # Hard flush limit = context_window_tokens - reserve_floor_tokens.
-  reserve_floor_tokens: 32000
-
-  # Messages injected at the flush turn (override if you need custom wording)
-  # system_prompt: "Session nearing compaction. Store durable memories now."
-  # user_prompt: "Review the conversation and write lasting facts to memory using memory_write. Reply DONE when finished."
 
 # ---------------------------------------------------------------------------
 # MCP server (groundmemory-mcp command)

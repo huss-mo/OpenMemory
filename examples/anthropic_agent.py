@@ -41,7 +41,7 @@ client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
 system_prompt = (
     "You are a helpful assistant with access to a persistent memory system. "
-    "Use memory_write to remember important facts, memory_search to recall "
+    "Use memory_write to remember important facts, memory_read to recall "
     "information, and memory_relate to record relationships between entities.\n\n"
     + session.bootstrap()
 )
@@ -67,14 +67,6 @@ while True:
         break
 
     messages.append({"role": "user", "content": user_input})
-
-    # Check if we should compact before calling the model
-    approx_tokens = sum(len(str(m.get("content", ""))) // 4 for m in messages)
-    if session.should_compact(approx_tokens, 200_000):
-        prompts = session.compaction_prompts()
-        print("[groundmemory] Context window approaching limit - triggering memory flush.")
-        # Inject a compact request as a user turn (Anthropic doesn't support system mid-stream)
-        messages.append({"role": "user", "content": prompts["user"]})
 
     messages = run_agent_loop(
         session=session,

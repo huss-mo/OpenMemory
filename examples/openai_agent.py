@@ -41,7 +41,7 @@ client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 system_prompt = (
     "You are a helpful assistant with access to a persistent memory system. "
-    "Use memory_write to remember important facts, memory_search to recall "
+    "Use memory_write to remember important facts, memory_read to recall "
     "information, and memory_relate to record relationships between entities.\n\n"
     + session.bootstrap()
 )
@@ -67,15 +67,6 @@ while True:
         break
 
     messages.append({"role": "user", "content": user_input})
-
-    # Check if we should compact before calling the model
-    # (token counts are approximate here - use tiktoken for production)
-    approx_tokens = sum(len(m.get("content", "") or "") // 4 for m in messages)
-    if session.should_compact(approx_tokens, 128_000):
-        prompts = session.compaction_prompts()
-        print("[groundmemory] Context window approaching limit - triggering memory flush.")
-        messages.append({"role": "system", "content": prompts["system"]})
-        messages.append({"role": "user", "content": prompts["user"]})
 
     messages = run_agent_loop(
         session=session,

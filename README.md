@@ -7,7 +7,7 @@
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![Release](https://github.com/huss-mo/GroundMemory/actions/workflows/pypi-publish.yml/badge.svg?event=push)](https://github.com/huss-mo/GroundMemory/actions/workflows/pypi-publish.yml)
 [![Unit Tests](https://github.com/huss-mo/GroundMemory/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/huss-mo/GroundMemory/actions/workflows/unit-tests.yml)
-[![Test Suite](https://img.shields.io/badge/test%20suite-461%20tests-blue.svg)](#running-the-test-suite)
+[![Test Suite](https://img.shields.io/badge/test%20suite-458%20tests-blue.svg)](#running-the-test-suite)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![GitHub repo size](https://img.shields.io/github/repo-size/huss-mo/GroundMemory)
 ![GitHub language count](https://img.shields.io/github/languages/count/huss-mo/GroundMemory)
@@ -116,7 +116,7 @@ The exchange below is an example of what this looks like. The first session happ
 
 **A customer-facing agent with per-user memory.** In multi-user setups, each user gets their own workspace - preferences, history, ongoing context - giving every interaction a personalised, stateful feel without any custom infrastructure.
 
-**A long-running autonomous agent that survives context limits.** When the context window fills, compaction hooks instruct the agent to flush important facts to memory before the window rolls over. The next session picks up exactly where the last one left off.
+**A long-running autonomous agent that survives context limits.** Each new session calls `memory_bootstrap` to reload persisted facts, so the agent picks up exactly where the last one left off.
 
 ---
 
@@ -143,7 +143,6 @@ Additional capabilities:
 - **Pluggable embedding providers** - swap between a local sentence-transformers model, any OpenAI-compatible endpoint (OpenAI, Ollama, LM Studio, LiteLLM), or BM25-only without touching your agent code.
 - **Workspace isolation** - each project, user, or agent gets its own directory-backed workspace with independent memory, relations, and daily logs.
 - **Relation graph with semantic deduplication** - the graph automatically suppresses near-duplicate triples using configurable cosine similarity thresholding.
-- **Compaction hooks** - when a session approaches the context window limit, GroundMemory emits structured prompts that instruct the agent to flush important facts to storage before the window rolls over.
 
 ---
 
@@ -160,7 +159,6 @@ Comparison reflects publicly documented features as of MAR-2026. Submit a PR if 
 | Hybrid BM25 + vector search | ✅ | - | - | ✅ | ✅ |
 | Entity relation graph | ✅ | ✅ | - | - | ✅ |
 | MCP-native server | ✅ | Partial⁴ | Partial⁵ | - | - |
-| Compaction hooks | ✅ | - | ✅ | - | - |
 | Temporal knowledge graph | -⁶ | - | - | - | ✅ |
 | Full agent framework | - | - | ✅ | - | - |
 | Managed cloud service | - | ✅ | ✅ | - | ✅ |

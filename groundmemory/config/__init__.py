@@ -200,48 +200,6 @@ class SearchConfig(BaseSettings):
     rerank_model: Optional[str] = None
 
 
-class CompactionConfig(BaseSettings):
-    """Pre-compaction flush configuration.
-
-    When the context window is nearly full the adapter injects a flush message
-    that tells the agent to call memory_write for anything worth keeping, before
-    the LLM provider silently drops or summarises old messages.
-
-    Environment variables (prefix: GROUNDMEMORY_COMPACTION__):
-        ENABLED                 - enable/disable compaction hooks
-        CONTEXT_WINDOW_TOKENS   - total token capacity of the model being used
-        SOFT_THRESHOLD_TOKENS   - flush when token *usage* reaches this count
-                                  (tokens consumed from the start of the window,
-                                   not tokens remaining at the end)
-        RESERVE_FLOOR_TOKENS    - always keep this many tokens free for the model's
-                                  reply; sets a hard flush limit at
-                                  context_window_tokens - reserve_floor_tokens
-        SYSTEM_PROMPT           - system message injected at the flush turn
-        USER_PROMPT             - user message injected at the flush turn
-    """
-
-    model_config = SettingsConfigDict(
-        env_prefix="GROUNDMEMORY_COMPACTION__",
-        env_file=_env_file_paths(),
-        extra="ignore",
-    )
-
-    enabled: bool = True
-    # Total token capacity of the model (used to derive the hard flush limit)
-    context_window_tokens: int = 128_000
-    # Flush when this many tokens have been *consumed* in the context window
-    soft_threshold_tokens: int = 64_000
-    # Always keep this many tokens free for the model's reply
-    reserve_floor_tokens: int = 32_000
-    system_prompt: str = (
-        "Session nearing compaction. Store durable memories now before context is summarized."
-    )
-    user_prompt: str = (
-        "Review the conversation and write any lasting facts, decisions, or preferences to memory "
-        "using memory_write. Reply DONE when finished, or NO_REPLY if nothing needs saving."
-    )
-
-
 class RelationsConfig(BaseSettings):
     """Relation graph configuration.
 
@@ -397,7 +355,6 @@ class groundmemoryConfig(BaseSettings):
     chunking: ChunkingConfig = Field(default_factory=ChunkingConfig)
     search: SearchConfig = Field(default_factory=SearchConfig)
     relations: RelationsConfig = Field(default_factory=RelationsConfig)
-    compaction: CompactionConfig = Field(default_factory=CompactionConfig)
     bootstrap: BootstrapConfig = Field(default_factory=BootstrapConfig)
     mcp: MCPConfig = Field(default_factory=MCPConfig)
 
@@ -432,7 +389,6 @@ class groundmemoryConfig(BaseSettings):
         chunking_data = data.pop("chunking", {})
         search_data = data.pop("search", {})
         relations_data = data.pop("relations", {})
-        compaction_data = data.pop("compaction", {})
         bootstrap_data = data.pop("bootstrap", {})
         mcp_data = data.pop("mcp", {})
 
@@ -450,7 +406,6 @@ class groundmemoryConfig(BaseSettings):
         chunking = ChunkingConfig(**_filter_env_overrides(chunking_data, "GROUNDMEMORY_CHUNKING__"))
         search = SearchConfig(**_filter_env_overrides(search_data, "GROUNDMEMORY_SEARCH__"))
         relations = RelationsConfig(**_filter_env_overrides(relations_data, "GROUNDMEMORY_RELATIONS__"))
-        compaction = CompactionConfig(**_filter_env_overrides(compaction_data, "GROUNDMEMORY_COMPACTION__"))
         bootstrap = BootstrapConfig(**_filter_env_overrides(bootstrap_data, "GROUNDMEMORY_BOOTSTRAP__"))
         mcp = MCPConfig(**_filter_env_overrides(mcp_data, "GROUNDMEMORY_MCP__"))
 
@@ -465,7 +420,6 @@ class groundmemoryConfig(BaseSettings):
             chunking=chunking,
             search=search,
             relations=relations,
-            compaction=compaction,
             bootstrap=bootstrap,
             mcp=mcp,
             **extra,

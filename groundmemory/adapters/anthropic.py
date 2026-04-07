@@ -153,15 +153,10 @@ def run_agent_loop(
     -------
     list[dict]  Final message history.
     """
-    from groundmemory.bootstrap.compaction import should_flush, get_compaction_prompts
-
     tools = get_anthropic_tools()
     # Auto-inject bootstrap if system is empty
     if not system:
         system = session.bootstrap()
-
-    compaction_cfg = session.config.compaction
-    _flushed = False  # only flush once per loop
 
     for _ in range(max_iterations):
         response = client.messages.create(
@@ -175,27 +170,6 @@ def run_agent_loop(
 
         asst_turn, result_turn = handle_tool_calls(session, response)
         messages.append(asst_turn)
-
-        # Check compaction threshold and inject a flush turn if needed
-        if not _flushed and compaction_cfg.enabled:
-            used = response.usage.input_tokens + response.usage.output_tokens
-            if should_flush(used, compaction_cfg):
-                prompts = get_compaction_prompts(compaction_cfg)
-                messages.append({"role": "user", "content": prompts["user"]})
-                # One dedicated flush turn - let the model write to memory
-                flush_response = client.messages.create(
-                    model=model,
-                    max_tokens=max_tokens,
-                    system=prompts["system"],
-                    messages=messages,
-                    tools=tools,
-                    **create_kwargs,
-                )
-                flush_asst, flush_results = handle_tool_calls(session, flush_response)
-                messages.append(flush_asst)
-                if flush_results:
-                    messages.append(flush_results)
-                _flushed = True
 
         # Stop when the model finished without requesting tools
         if response.stop_reason != "tool_use":

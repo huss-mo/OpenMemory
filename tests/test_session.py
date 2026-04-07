@@ -205,25 +205,6 @@ class TestSessionBootstrap:
             s.close()
 
 
-class TestSessionCompaction:
-    def test_should_compact_false_when_tokens_far_from_limit(self, session):
-        result = session.should_compact(current_tokens=1000, context_window=200_000)
-        assert result is False
-
-    def test_should_compact_true_when_near_limit(self, session):
-        result = session.should_compact(current_tokens=198_000, context_window=200_000)
-        assert result is True
-
-    def test_compaction_prompts_returns_system_and_user(self, session):
-        prompts = session.compaction_prompts()
-        assert "system" in prompts
-        assert "user" in prompts
-        assert isinstance(prompts["system"], str)
-        assert isinstance(prompts["user"], str)
-        assert len(prompts["system"]) > 0
-        assert len(prompts["user"]) > 0
-
-
 class TestConfigFromYaml:
     def test_from_yaml_loads_embedding_provider(self, tmp_path):
         import yaml
