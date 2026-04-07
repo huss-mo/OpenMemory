@@ -71,7 +71,7 @@ def get_anthropic_tools(names: list[str] | None = None) -> list[dict]:
 def handle_tool_calls(
     session: Any,
     response: Any,
-) -> tuple[list[dict], list[dict]]:
+) -> tuple[dict, dict]:
     """
     Process all tool_use blocks in an Anthropic ``Message`` response.
 
