@@ -41,7 +41,7 @@ SCHEMA: dict = {
                     "The memory file to compact. "
                     "Must be one of the tiers listed in the compaction notice."
                 ),
-                "enum": list(_ALLOWED_TIERS),
+                # enum is injected at registration time from config.bootstrap.compaction_tiers
             },
             "content": {
                 "type": "string",

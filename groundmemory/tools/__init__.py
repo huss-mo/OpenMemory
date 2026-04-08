@@ -51,7 +51,14 @@ def build_tool_registry(
             all_tools.append((memory_list.SCHEMA, memory_list.run))
         # memory_compact is always registered - its availability is communicated
         # through the bootstrap notice, not by hiding the tool.
-        all_tools.append((memory_compact.SCHEMA, memory_compact.run))
+        # Inject the allowed tier enum from config so the agent only sees the
+        # tiers that are actually configured (not the full hard-coded safety set).
+        import copy
+        compact_schema = copy.deepcopy(memory_compact.SCHEMA)
+        compact_schema["parameters"]["properties"]["tier"]["enum"] = list(
+            config.bootstrap.compaction_tiers
+        )
+        all_tools.append((compact_schema, memory_compact.run))
 
     tool_runners: dict[str, object] = {schema["name"]: run for schema, run in all_tools}
     tool_schemas: dict[str, dict] = {schema["name"]: schema for schema, _ in all_tools}

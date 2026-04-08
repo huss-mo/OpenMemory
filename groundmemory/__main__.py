@@ -95,21 +95,9 @@ def main() -> None:
         action="store_true",
         help="List all available backups for the current workspace.",
     )
-    parser.add_argument(
-        "--workspace",
-        metavar="PATH",
-        help=(
-            "Explicit path to the workspace directory. "
-            "Defaults to the workspace configured in env / groundmemory.yaml."
-        ),
-    )
-
     args = parser.parse_args()
 
-    if args.workspace:
-        workspace_path = Path(args.workspace).expanduser().resolve()
-    else:
-        workspace_path = _get_workspace_path()
+    workspace_path = _get_workspace_path()
 
     if args.list_backups:
         cmd_list_backups(workspace_path)

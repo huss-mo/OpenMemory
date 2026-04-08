@@ -530,7 +530,9 @@ class TestSessionBootstrapBackup:
         finally:
             s.close()
 
-    def test_backup_name_present_in_notice(self, tmp_path):
+    def test_backup_created_and_notice_injected(self, tmp_path):
+        """When threshold is exceeded: backup exists on disk and notice is in the prompt."""
+        from groundmemory.core.backup import list_backups
         s = _make_session(
             tmp_path,
             compaction_token_threshold=1,
@@ -540,9 +542,13 @@ class TestSessionBootstrapBackup:
             s.workspace.first_run_file.write_text("", encoding="utf-8")
             s.execute_tool("memory_write", file="MEMORY.md", content="content")
             result = s.bootstrap()
-            # The backup name (YYYY-MM-DD_HHmmss) should appear in the notice
+            # Backup file exists
+            assert len(list_backups(s.workspace.workspace_path)) == 1
+            # Compaction notice is in the prompt
+            assert "Compaction Required" in result
+            # Backup name is NOT in the prompt (it's only logged to server output)
             import re
-            assert re.search(r"\d{4}-\d{2}-\d{2}_\d{6}", result)
+            assert not re.search(r"\d{4}-\d{2}-\d{2}_\d{6}", result)
         finally:
             s.close()
 

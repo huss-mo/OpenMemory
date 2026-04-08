@@ -126,10 +126,9 @@ class MemorySession:
         from groundmemory.bootstrap.token_counter import count_tokens
 
         # Determine whether compaction is configured and take a pre-session backup
-        # if the bootstrap context is above the threshold.  The backup happens once
-        # per session bootstrap call so that repeated memory_compact calls do not
-        # produce multiple redundant archives.
-        backup_name = ""
+        # if the bootstrap context is above the threshold.  The backup is logged to
+        # the server output for the user - not injected into the agent's context.
+        inject_compaction_notice = False
         cfg = self.config.bootstrap
         if cfg.compaction_token_threshold > 0:
             # Build a token-counting draft that includes only compactable tiers
@@ -153,15 +152,21 @@ class MemorySession:
                 counting_cfg,
                 index=None,
                 dispatcher_mode=self.config.dispatcher_mode,
-                backup_name="",  # no notice on draft
+                inject_compaction_notice=False,
             )
             if draft:
                 token_count = count_tokens(draft, method=cfg.compaction_token_counter)
                 if token_count > cfg.compaction_token_threshold:
+                    inject_compaction_notice = True
                     try:
                         from groundmemory.core.backup import create_backup
                         archive = create_backup(self.workspace.workspace_path)
-                        backup_name = archive.stem  # e.g. "2026-04-08_165530"
+                        logger.info(
+                            "Compaction threshold exceeded (%d tokens). "
+                            "Workspace backup taken: %s",
+                            token_count,
+                            archive.stem,
+                        )
                     except Exception:  # noqa: BLE001
                         logger.warning(
                             "Failed to create pre-compaction backup; proceeding without one.",
@@ -173,7 +178,7 @@ class MemorySession:
             cfg,
             index=self.index,
             dispatcher_mode=self.config.dispatcher_mode,
-            backup_name=backup_name,
+            inject_compaction_notice=inject_compaction_notice,
         )
 
     # ------------------------------------------------------------------

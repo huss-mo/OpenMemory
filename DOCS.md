@@ -1116,10 +1116,9 @@ groundmemory --restore 2026-04-08
 
 # Restore by exact timestamp
 groundmemory --restore 2026-04-08_165530
-
-# Restore from a specific workspace path
-groundmemory --workspace ~/.groundmemory/my-project --restore -1
 ```
+
+The workspace is always resolved from your environment / config (same as `groundmemory-mcp`). Set `GROUNDMEMORY_WORKSPACE` or configure `workspace` in `groundmemory.yaml` to target a specific workspace before running the restore command.
 
 If a date matches multiple backups, the command prints the list and exits — you can then use the full timestamp to disambiguate. After restoring, restart the MCP server if it is running.
 

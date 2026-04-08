@@ -61,7 +61,7 @@ def build_bootstrap_prompt(
     cfg: BootstrapConfig,
     index: MemoryIndex | None = None,
     dispatcher_mode: bool = False,
-    backup_name: str = "",
+    inject_compaction_notice: bool = False,
 ) -> str:
     """
     Build the full memory-injection string for the system prompt.
@@ -75,9 +75,8 @@ def build_bootstrap_prompt(
         relation data from SQLite rather than only from RELATIONS.md.
     dispatcher_mode : bool
         When True, inject full tool usage instructions for the dispatcher.
-    backup_name  : str
-        Name of the backup taken before this session (used in the compaction
-        notice). Empty string means no backup was taken / compaction disabled.
+    inject_compaction_notice : bool
+        When True, append the compaction notice to the bootstrap string.
 
     Returns
     -------
@@ -177,15 +176,10 @@ def build_bootstrap_prompt(
     footer = "\n<!-- groundmemory bootstrap end -->"
     body = header + "\n".join(sections)
 
-    # 7. Compaction notice: inject when token count exceeds threshold
-    if backup_name and cfg.compaction_token_threshold > 0:
-        from groundmemory.bootstrap.token_counter import count_tokens
-        token_count = count_tokens(body, method=cfg.compaction_token_counter)
-        if token_count > cfg.compaction_token_threshold:
-            tiers_str = ", ".join(f"`{t}`" for t in cfg.compaction_tiers)
-            notice = _COMPACTION_NOTICE_TEMPLATE.format(
-                tiers=tiers_str, backup_name=backup_name
-            )
-            body = body + _section("Memory Compaction Required", notice.strip())
+    # 7. Compaction notice: inject when requested
+    if inject_compaction_notice:
+        tiers_str = ", ".join(f"`{t}`" for t in cfg.compaction_tiers)
+        notice = _COMPACTION_NOTICE_TEMPLATE.format(tiers=tiers_str)
+        body = body + _section("Memory Compaction Required", notice.strip())
 
     return body + footer
