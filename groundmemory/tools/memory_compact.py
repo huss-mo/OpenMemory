@@ -26,10 +26,10 @@ SCHEMA: dict = {
     "name": "memory_compact",
     "description": (
         "Overwrite a memory tier with a compacted version. "
-        "Only call this tool when explicitly instructed to do so by the memory context - "
-        "it will tell you which tiers to compact and in what order. "
-        "Read the tier first with memory_read, produce a tighter version "
-        "(merge duplicates, remove outdated entries, summarise verbose sections), "
+        "**Only call this tool if the memory context explicitly instructs you to compact memory.** "
+        "If you do not see a compaction notice in your memory context, do not call this tool. "
+        "When instructed: read the tier with memory_read, produce a tighter version "
+        "(merge duplicates, remove outdated entries, summarise verbose sections, preserve date headers), "
         "then call this tool with the result. Work one tier at a time."
     ),
     "parameters": {

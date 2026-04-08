@@ -14,6 +14,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 from groundmemory.config import groundmemoryConfig
 from groundmemory.tools import (
     memory_bootstrap as _t_bootstrap,
+    memory_compact as _t_compact,
     memory_dispatcher as _t_dispatcher,
     memory_list as _t_list,
     memory_read as _t_read,
@@ -156,6 +157,10 @@ def memory_list() -> str:
     return _unwrap(_get_session().execute_tool("memory_list"))
 
 
+def memory_compact(tier: str, content: str) -> str:
+    return _unwrap(_get_session().execute_tool("memory_compact", tier=tier, content=content))
+
+
 # ---------------------------------------------------------------------------
 # Tool registration - conditional on config
 #
@@ -185,6 +190,17 @@ def _register_tools(cfg: groundmemoryConfig) -> None:
         # Optional: memory_list gated by config.
         if cfg.expose_memory_list:
             mcp.tool()(memory_list)
+        # memory_compact: only register when compaction is configured.
+        # Gated on threshold > 0 so the tool is invisible (no token cost) when
+        # compaction is disabled (the default).
+        if cfg.bootstrap.compaction_token_threshold > 0:
+            import copy
+            compact_schema = copy.deepcopy(_t_compact.SCHEMA)
+            compact_schema["parameters"]["properties"]["tier"]["enum"] = list(
+                cfg.bootstrap.compaction_tiers
+            )
+            memory_compact.__doc__ = compact_schema["description"]
+            mcp.tool()(memory_compact)
 
 
 # ---------------------------------------------------------------------------
@@ -199,6 +215,7 @@ memory_read.__doc__       = _t_read.SCHEMA["description"]
 memory_write.__doc__      = _t_write.SCHEMA["description"]
 memory_relate.__doc__     = _t_relate.SCHEMA["description"]
 memory_list.__doc__       = _t_list.SCHEMA["description"]
+memory_compact.__doc__    = _t_compact.SCHEMA["description"]
 
 # Register all tools at module load (config is read once)
 _register_tools(groundmemoryConfig.auto())
