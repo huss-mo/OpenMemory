@@ -90,6 +90,7 @@ You have one tool: `memory_tool(action, args)`.
 - `action="bootstrap"` - load full memory context (call once at session start)
 - `action="describe", args={"action":"<name>"}` - get full schema for any action before using it. The descriptions below are not comprehensive.
 - `action="read"`, `action="write"`, `action="relate"`, `action="list"` - memory operations
+- `action="compact"` - overwrite a memory tier with a compacted version. Only use when the memory context explicitly instructs you to.
 
 ---
 

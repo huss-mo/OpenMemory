@@ -29,6 +29,7 @@ _ACTION_DOCS = {
     "write":      "Append/replace/delete memory. Args: file, content, search?, start_line?, end_line?, tags?",
     "relate":     "Add an entity relation. Args: subject, predicate, object, note?",
     "list":       "List all memory files with sizes. No args.",
+    "compact":    "Overwrite a memory tier with a compacted version. Only use when the memory context explicitly instructs you to. Args: tier, content.",
 }
 
 SCHEMA = {
@@ -69,15 +70,17 @@ _ACTION_TO_MODULE = {
     "relate":    ("groundmemory.tools.memory_relate",    "run"),
     "list":      ("groundmemory.tools.memory_list",      "run"),
     "describe":  (None,                                   None),   # handled inline
+    "compact":   ("groundmemory.tools.memory_compact",   "run"),
 }
 
 # Full schemas for describe action (lazy-imported tool schemas by action name)
 _ACTION_TO_SCHEMA_MODULE = {
-    "read":      ("groundmemory.tools.memory_read",    "SCHEMA"),
-    "write":     ("groundmemory.tools.memory_write",   "SCHEMA"),
-    "relate":    ("groundmemory.tools.memory_relate",  "SCHEMA"),
-    "list":      ("groundmemory.tools.memory_list",    "SCHEMA"),
+    "read":      ("groundmemory.tools.memory_read",      "SCHEMA"),
+    "write":     ("groundmemory.tools.memory_write",     "SCHEMA"),
+    "relate":    ("groundmemory.tools.memory_relate",    "SCHEMA"),
+    "list":      ("groundmemory.tools.memory_list",      "SCHEMA"),
     "bootstrap": ("groundmemory.tools.memory_bootstrap", "SCHEMA"),
+    "compact":   ("groundmemory.tools.memory_compact",   "SCHEMA"),
 }
 
 
