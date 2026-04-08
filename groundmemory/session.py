@@ -123,11 +123,57 @@ class MemorySession:
                 )
 
         from groundmemory.bootstrap.injector import build_bootstrap_prompt
+        from groundmemory.bootstrap.token_counter import count_tokens
+
+        # Determine whether compaction is configured and take a pre-session backup
+        # if the bootstrap context is above the threshold.  The backup happens once
+        # per session bootstrap call so that repeated memory_compact calls do not
+        # produce multiple redundant archives.
+        backup_name = ""
+        cfg = self.config.bootstrap
+        if cfg.compaction_token_threshold > 0:
+            # Build a token-counting draft that includes only compactable tiers
+            # (MEMORY.md, USER.md, AGENTS.md).  RELATIONS.md and daily logs are
+            # excluded because they are never compacted - counting them would
+            # cause false positives and mislead the agent about what to compact.
+            from groundmemory.config import BootstrapConfig
+            counting_cfg = BootstrapConfig(
+                max_chars_per_file=cfg.max_chars_per_file,
+                max_total_chars=cfg.max_total_chars,
+                inject_long_term_memory=cfg.inject_long_term_memory,
+                inject_user_profile=cfg.inject_user_profile,
+                inject_agents=cfg.inject_agents,
+                inject_daily_logs=False,   # excluded from token count
+                daily_log_days=0,
+                inject_relations=False,    # excluded from token count
+                compaction_token_threshold=0,  # don't recurse
+            )
+            draft = build_bootstrap_prompt(
+                self.workspace,
+                counting_cfg,
+                index=None,
+                dispatcher_mode=self.config.dispatcher_mode,
+                backup_name="",  # no notice on draft
+            )
+            if draft:
+                token_count = count_tokens(draft, method=cfg.compaction_token_counter)
+                if token_count > cfg.compaction_token_threshold:
+                    try:
+                        from groundmemory.core.backup import create_backup
+                        archive = create_backup(self.workspace.workspace_path)
+                        backup_name = archive.stem  # e.g. "2026-04-08_165530"
+                    except Exception:  # noqa: BLE001
+                        logger.warning(
+                            "Failed to create pre-compaction backup; proceeding without one.",
+                            exc_info=True,
+                        )
 
         return build_bootstrap_prompt(
             self.workspace,
-            self.config.bootstrap,
+            cfg,
+            index=self.index,
             dispatcher_mode=self.config.dispatcher_mode,
+            backup_name=backup_name,
         )
 
     # ------------------------------------------------------------------

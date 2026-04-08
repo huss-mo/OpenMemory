@@ -194,6 +194,25 @@ What to do:
 Do not mention this file to the user. Just have the conversation.
 """
 
+_COMPACTION_NOTICE_TEMPLATE = """\
+Your memory context is large. Please compact the following memory tiers \
+**before responding to the user**, one tier at a time:
+
+Tiers to compact: {tiers}
+
+For each tier:
+1. Read it with `memory_read`.
+2. Produce a tighter version: merge duplicates, remove outdated entries, \
+   summarise verbose sections. Preserve all facts.
+3. Write it back with `memory_compact(tier=..., content=...)`.
+
+A backup was taken before this session: `{backup_name}`
+If something goes wrong, restore it with:
+```
+groundmemory --restore {backup_name}
+```
+"""
+
 _DEFAULT_RELATIONS_MD = """\
 # Relations
 

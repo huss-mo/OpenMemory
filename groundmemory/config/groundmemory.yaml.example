@@ -145,6 +145,39 @@ bootstrap:
   # automatically after every memory_write / memory_relate / memory_delete call.
   sync_memory_on_bootstrap: false
 
+  # ---------------------------------------------------------------------------
+  # Memory compaction
+  # ---------------------------------------------------------------------------
+  #
+  # When the token count of compactable memory tiers (MEMORY.md, USER.md,
+  # AGENTS.md) exceeds this threshold, GroundMemory:
+  #   1. Takes a workspace backup (backups/YYYY-MM-DD_HHmmss.zip)
+  #   2. Injects a compaction notice into the bootstrap prompt
+  #
+  # Note: RELATIONS.md and daily logs are NOT counted toward this threshold
+  # because they are never compacted. Only the tiers in compaction_tiers
+  # are measured.
+  #
+  # The agent is then expected to compact the configured tiers one by one
+  # using the memory_compact tool. Set to 0 (default) to disable.
+  #
+  # compaction_token_threshold: 6000
+  #
+  # Token counter method:
+  #   "approx"   - fast approximation (len // 4), no extra deps (default)
+  #   "tiktoken" - accurate BPE count (requires: pip install groundmemory[local])
+  #
+  # compaction_token_counter: approx
+  #
+  # Which memory files the agent is allowed to compact. Daily logs are never
+  # compacted. MEMORY.md is the only default - enable USER.md / AGENTS.md
+  # only if you are comfortable with the agent editing those files.
+  #
+  # compaction_tiers:
+  #   - MEMORY.md
+  #   # - USER.md
+  #   # - AGENTS.md
+
 # ---------------------------------------------------------------------------
 # Optional tools
 # ---------------------------------------------------------------------------

@@ -9,6 +9,9 @@ Design goals
 * Warn (with a visible marker) when a file is truncated so the agent knows
   it doesn't have the full picture.
 * Optionally include the relation graph and daily logs.
+* When the token count of the assembled prompt exceeds
+  BootstrapConfig.compaction_token_threshold, inject a compaction notice
+  block so the agent knows to compact memory using the memory_compact tool.
 """
 from __future__ import annotations
 
@@ -17,7 +20,7 @@ from pathlib import Path
 from typing import Sequence
 
 from groundmemory.config import BootstrapConfig
-from groundmemory.core.workspace import Workspace, _AGENT_TOOLS_DISPATCHER_MD
+from groundmemory.core.workspace import Workspace, _AGENT_TOOLS_DISPATCHER_MD, _COMPACTION_NOTICE_TEMPLATE
 from groundmemory.core import storage, relations as _graph
 from groundmemory.core.index import MemoryIndex
 
@@ -58,17 +61,23 @@ def build_bootstrap_prompt(
     cfg: BootstrapConfig,
     index: MemoryIndex | None = None,
     dispatcher_mode: bool = False,
+    backup_name: str = "",
 ) -> str:
     """
     Build the full memory-injection string for the system prompt.
 
     Parameters
     ----------
-    workspace : Workspace
-    cfg       : BootstrapConfig  (from groundmemoryConfig.bootstrap)
-    index     : MemoryIndex | None
+    workspace    : Workspace
+    cfg          : BootstrapConfig  (from groundmemoryConfig.bootstrap)
+    index        : MemoryIndex | None
         Only needed when ``cfg.inject_relations`` is True and you want
         relation data from SQLite rather than only from RELATIONS.md.
+    dispatcher_mode : bool
+        When True, inject full tool usage instructions for the dispatcher.
+    backup_name  : str
+        Name of the backup taken before this session (used in the compaction
+        notice). Empty string means no backup was taken / compaction disabled.
 
     Returns
     -------
@@ -166,4 +175,17 @@ def build_bootstrap_prompt(
         "Use it to maintain continuity across sessions.\n\n"
     )
     footer = "\n<!-- groundmemory bootstrap end -->"
-    return header + "\n".join(sections) + footer
+    body = header + "\n".join(sections)
+
+    # 7. Compaction notice: inject when token count exceeds threshold
+    if backup_name and cfg.compaction_token_threshold > 0:
+        from groundmemory.bootstrap.token_counter import count_tokens
+        token_count = count_tokens(body, method=cfg.compaction_token_counter)
+        if token_count > cfg.compaction_token_threshold:
+            tiers_str = ", ".join(f"`{t}`" for t in cfg.compaction_tiers)
+            notice = _COMPACTION_NOTICE_TEMPLATE.format(
+                tiers=tiers_str, backup_name=backup_name
+            )
+            body = body + _section("Memory Compaction Required", notice.strip())
+
+    return body + footer

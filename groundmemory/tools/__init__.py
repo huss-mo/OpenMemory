@@ -29,6 +29,7 @@ def build_tool_registry(
         memory_relate,
         memory_list,
         memory_dispatcher,
+        memory_compact,
     )
 
     if config.dispatcher_mode:
@@ -48,6 +49,9 @@ def build_tool_registry(
         # Optional: memory_list (gated by config)
         if config.expose_memory_list:
             all_tools.append((memory_list.SCHEMA, memory_list.run))
+        # memory_compact is always registered - its availability is communicated
+        # through the bootstrap notice, not by hiding the tool.
+        all_tools.append((memory_compact.SCHEMA, memory_compact.run))
 
     tool_runners: dict[str, object] = {schema["name"]: run for schema, run in all_tools}
     tool_schemas: dict[str, dict] = {schema["name"]: schema for schema, _ in all_tools}

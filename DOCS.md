@@ -35,6 +35,8 @@ For a project overview and quick start, see [README.md](README.md).
       - [7. Relation Graph (`GroundMemory/core/relations.py`)](#7-relation-graph-groundmemorycorerelationspy)
       - [8. Sync (`GroundMemory/core/sync.py`)](#8-sync-groundmemorycoresyncpy)
       - [9. Bootstrap Injector (`GroundMemory/bootstrap/injector.py`)](#9-bootstrap-injector-groundmemorybootstrapinjectorpy)
+      - [9a. Token Counter (`GroundMemory/bootstrap/token_counter.py`)](#9a-token-counter-groundmemorybootstraptoken_counterpy)
+      - [9b. Workspace Backup (`GroundMemory/core/backup.py`)](#9b-workspace-backup-groundmemorycorebackuppy)
       - [10. Tools (`GroundMemory/tools/`)](#10-tools-groundmemorytools)
       - [11. LLM Adapters (`GroundMemory/adapters/`)](#11-llm-adapters-groundmemoryadapters)
       - [12. Session (`GroundMemory/session.py`)](#12-session-groundmemorysessionpy)
@@ -674,6 +676,14 @@ Keeps the SQLite index consistent with the Markdown files using SHA-256 content 
 #### 9. Bootstrap Injector (`GroundMemory/bootstrap/injector.py`)
 Assembles a system-prompt block from workspace files, respecting per-file and total character budgets (`max_chars_per_file`, `max_total_chars`). Truncated files get a visible `[TRUNCATED - use memory_get to read the rest]` marker. Injects (in order): long-term memory, user profile, agent instructions, relation graph, and daily logs. The number of daily log files injected is controlled by `daily_log_days` (default: 1 = today only; set to 2 for today + yesterday).
 
+When `compaction_token_threshold > 0`, the injector counts the tokens in the assembled prompt (using either `len // 4` or `tiktoken`) and, if the count is above the threshold, appends a compaction notice instructing the agent to compact the configured tiers one by one using `memory_compact`.
+
+#### 9a. Token Counter (`GroundMemory/bootstrap/token_counter.py`)
+Counts tokens in the bootstrap string. Two methods: `"approx"` (`len(text) // 4`, no extra deps, default) and `"tiktoken"` (accurate BPE count via the tiktoken library, which is included as a core dependency). Falls back to `"approx"` if tiktoken is not importable.
+
+#### 9b. Workspace Backup (`GroundMemory/core/backup.py`)
+Creates timestamped zip archives of the workspace before compaction. Archives are stored in `<workspace>/backups/YYYY-MM-DD_HHmmss.zip` and contain all Markdown files, the `daily/` directory, and `.index/memory.db`. Provides `create_backup`, `list_backups`, `parse_spec` (resolves user-supplied restore specs), and `restore_backup`.
+
 #### 10. Tools (`GroundMemory/tools/`)
 Four core tools + two optional (config-gated) tools exposed to the LLM via function calling:
 
@@ -930,6 +940,19 @@ bootstrap:
   # automatically after every memory_write / memory_relate / memory_delete call.
   sync_memory_on_bootstrap: false
 
+  # --- Memory compaction ---
+  #
+  # Threshold is measured against compactable tiers only (MEMORY.md, USER.md,
+  # AGENTS.md). RELATIONS.md and daily logs are excluded from the count.
+  # Set to 0 (default) to disable compaction.
+  #
+  # compaction_token_threshold: 6000
+  # compaction_token_counter: approx   # "approx" or "tiktoken" (pip install groundmemory[local])
+  # compaction_tiers:
+  #   - MEMORY.md
+  #   # - USER.md
+  #   # - AGENTS.md
+
 # ---------------------------------------------------------------------------
 # MCP server (groundmemory-mcp command)
 # ---------------------------------------------------------------------------
@@ -1051,6 +1074,9 @@ All settings are available as environment variables using the `GROUNDMEMORY_` pr
 | `GROUNDMEMORY_BOOTSTRAP__INJECT_RELATIONS` | Inject RELATIONS.md | `true` |
 | `GROUNDMEMORY_BOOTSTRAP__DAILY_LOG_DAYS` | Number of daily log files to inject counting back from today. `1` = today only, `2` = today + yesterday, `0` = none. | `1` |
 | `GROUNDMEMORY_BOOTSTRAP__SYNC_MEMORY_ON_BOOTSTRAP` | Re-index all workspace files at session start. Enable when you edit memory files outside the agent so the index stays consistent with disk. | `false` |
+| `GROUNDMEMORY_BOOTSTRAP__COMPACTION_TOKEN_THRESHOLD` | Token count of compactable tiers (MEMORY.md, USER.md, AGENTS.md) above which a backup is taken and a compaction notice is injected. RELATIONS.md and daily logs are excluded from this count. `0` = disabled. | `0` |
+| `GROUNDMEMORY_BOOTSTRAP__COMPACTION_TOKEN_COUNTER` | Token counting method: `"approx"` (`len // 4`) or `"tiktoken"` (accurate BPE, requires `pip install groundmemory[local]`). | `"approx"` |
+| `GROUNDMEMORY_BOOTSTRAP__COMPACTION_TIERS` | Memory files the agent is allowed to compact. Daily logs are never compacted. | `["MEMORY.md"]` |
 
 **General**
 
@@ -1068,6 +1094,34 @@ All settings are available as environment variables using the `GROUNDMEMORY_` pr
 | `GROUNDMEMORY_MCP__ALLOWED_HOSTS` | Comma-separated list of `Host:` header values to allow (DNS-rebinding protection). `localhost` and `127.0.0.1` are always allowed. Required when `HOST=0.0.0.0`. | `` |
 | `GROUNDMEMORY_MCP__FORWARDED_ALLOW_IPS` | IPs uvicorn trusts to pass `X-Forwarded-For` headers. Not needed for plain LAN access - only set when a reverse proxy sits in front of GroundMemory. | `127.0.0.1` |
 | `GROUNDMEMORY_MCP__API_KEY` | Static bearer token required on every request. When unset (default), no authentication is enforced. Set when exposing the server beyond localhost. Clients must send `Authorization: Bearer <token>`. | *(unset)* |
+
+**Backup and Restore**
+
+When compaction is triggered, GroundMemory automatically takes a zip backup of the workspace before the agent can modify any files. Backups are stored in `<workspace>/backups/YYYY-MM-DD_HHmmss.zip` and contain all Markdown files, the `daily/` directory, and `.index/memory.db`.
+
+Use the `groundmemory` CLI to manage backups:
+
+```bash
+# List all backups for the current workspace
+groundmemory --list-backups
+
+# Restore the most recent backup
+groundmemory --restore -1
+
+# Restore the second-most-recent backup
+groundmemory --restore -2
+
+# Restore by exact date (error if multiple backups on that date)
+groundmemory --restore 2026-04-08
+
+# Restore by exact timestamp
+groundmemory --restore 2026-04-08_165530
+
+# Restore from a specific workspace path
+groundmemory --workspace ~/.groundmemory/my-project --restore -1
+```
+
+If a date matches multiple backups, the command prints the list and exits — you can then use the full timestamp to disambiguate. After restoring, restart the MCP server if it is running.
 
 **Configuration priority (highest wins):**
 

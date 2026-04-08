@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any, Literal, Optional
+from typing import Any, List, Literal, Optional
 
 import yaml
 from pydantic import Field, field_validator
@@ -269,17 +269,24 @@ class BootstrapConfig(BaseSettings):
         INJECT_AGENTS            - inject AGENTS.md
         INJECT_DAILY_LOGS        - inject today's/yesterday's daily logs
         INJECT_RELATIONS         - inject RELATIONS.md
-        DAILY_LOG_DAYS           - number of daily log files to inject, counting back
-                                   from today (1 = today only, 2 = today+yesterday, 0 = none)
-        SYNC_MEMORY_ON_BOOTSTRAP - re-index all workspace files that have changed
-                                   since the last session before injecting context.
-                                   Uses SHA-256 content hashing, so only files
-                                   whose content actually changed are re-chunked
-                                   and re-embedded. Relations table is reconciled
-                                   automatically when RELATIONS.md is among the
-                                   changed files.
-                                   Disabled by default; enable when you edit
-                                   memory files manually between sessions.
+        DAILY_LOG_DAYS                - number of daily log files to inject, counting back
+                                        from today (1 = today only, 2 = today+yesterday, 0 = none)
+        SYNC_MEMORY_ON_BOOTSTRAP      - re-index all workspace files that have changed
+                                        since the last session before injecting context.
+                                        Uses SHA-256 content hashing, so only files
+                                        whose content actually changed are re-chunked
+                                        and re-embedded. Relations table is reconciled
+                                        automatically when RELATIONS.md is among the
+                                        changed files.
+                                        Disabled by default; enable when you edit
+                                        memory files manually between sessions.
+        COMPACTION_TOKEN_THRESHOLD    - if bootstrap token count exceeds this value, a
+                                        compaction notice is injected and the memory_compact
+                                        tool becomes available. 0 = disabled (default).
+        COMPACTION_TOKEN_COUNTER      - "approx" (len // 4, default) or "tiktoken"
+                                        (requires: pip install tiktoken)
+        COMPACTION_TIERS              - comma-separated list of memory files the agent is
+                                        allowed to compact. Default: "MEMORY.md"
     """
 
     model_config = SettingsConfigDict(
@@ -299,6 +306,14 @@ class BootstrapConfig(BaseSettings):
     # 1 = today only, 2 = today + yesterday, 0 = disabled (same as inject_daily_logs=False).
     daily_log_days: int = 1
     sync_memory_on_bootstrap: bool = False
+    # Memory compaction settings.
+    # When bootstrap token count exceeds this threshold, a compaction notice is
+    # injected and memory_compact becomes available to the agent. 0 = disabled.
+    compaction_token_threshold: int = 0
+    # Token counter method: "approx" (len // 4) or "tiktoken" (requires pip install tiktoken).
+    compaction_token_counter: Literal["approx", "tiktoken"] = "approx"
+    # Memory files the agent is allowed to compact (comma-separated string for env vars).
+    compaction_tiers: List[str] = Field(default_factory=lambda: ["MEMORY.md"])
 
 
 # ---------------------------------------------------------------------------
