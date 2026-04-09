@@ -886,10 +886,16 @@ search:
   # path (vector + keyword) before merging and re-ranking
   candidate_multiplier: 4
 
-  # Weight for vector similarity score (0.0–1.0)
-  # keyword_weight = 1.0 - vector_weight
-  # Set to 0.0 for pure BM25 (useful when provider: none)
+  # Weight for vector similarity score (0.0-1.0) used in Reciprocal Rank Fusion.
+  # keyword_weight = 1.0 - vector_weight.
+  # Set to 0.0 for pure BM25 (useful when provider: none).
   vector_weight: 0.7
+
+  # Reciprocal Rank Fusion k constant.
+  # Controls how much rank differences influence the final score.
+  # Higher values flatten the curve (less penalisation for lower ranks).
+  # Standard value is 60; lower values (e.g. 10-20) amplify rank differences.
+  rrf_k: 60
 
   # Temporal decay: score *= exp(-decay_rate * days_old)
   # 0.0 disables decay; 0.01 halves relevance after ~70 days
@@ -1044,7 +1050,8 @@ All settings are available as environment variables using the `GROUNDMEMORY_` pr
 |---|---|---|
 | `GROUNDMEMORY_SEARCH__TOP_K` | Results returned per query | `6` |
 | `GROUNDMEMORY_SEARCH__CANDIDATE_MULTIPLIER` | Oversampling factor per path | `4` |
-| `GROUNDMEMORY_SEARCH__VECTOR_WEIGHT` | Vector score weight (0.0–1.0) | `0.7` |
+| `GROUNDMEMORY_SEARCH__VECTOR_WEIGHT` | Vector list weight in RRF (0.0–1.0); keyword weight = 1 - vector_weight | `0.7` |
+| `GROUNDMEMORY_SEARCH__RRF_K` | Reciprocal Rank Fusion k constant. Higher values flatten rank differences. Standard default is 60. | `60` |
 | `GROUNDMEMORY_SEARCH__TEMPORAL_DECAY_RATE` | Score decay per day of age | `0.0` |
 | `GROUNDMEMORY_SEARCH__MMR_LAMBDA` | MMR diversity (0 = disabled) | `0.0` |
 

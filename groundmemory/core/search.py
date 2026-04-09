@@ -96,14 +96,41 @@ def _merge_results(
     vector_results: list[dict],
     keyword_results: list[dict],
     vector_weight: float,
+    rrf_k: int = 60,
 ) -> list[dict]:
-    """Merge vector and keyword result lists into a single scored list."""
-    text_weight = 1.0 - vector_weight
-    by_id: dict[str, dict] = {}
+    """
+    Merge vector and keyword result lists using Reciprocal Rank Fusion (RRF).
 
+    RRF avoids the score-incompatibility problem between cosine similarity
+    (bounded [0,1]) and BM25 (unbounded, different scale) by operating on
+    ranks rather than raw scores.
+
+    For each result the RRF score is:
+
+        score = vector_weight   * 1/(rrf_k + rank_in_vector_list)
+              + keyword_weight  * 1/(rrf_k + rank_in_keyword_list)
+
+    Results that appear in only one list get a rank of len(that_list) + 1
+    in the other list (i.e. last place), so they still contribute but at a
+    lower score than any result that actually appeared in both lists.
+
+    ``rrf_k`` (default 60) is the standard smoothing constant; higher values
+    reduce the influence of rank differences.
+    """
+    keyword_weight = 1.0 - vector_weight
+
+    # Build rank maps (0-indexed rank → 1-indexed for the formula)
+    vec_rank: dict[str, int] = {r["chunk_id"]: i + 1 for i, r in enumerate(vector_results)}
+    kw_rank: dict[str, int]  = {r["chunk_id"]: i + 1 for i, r in enumerate(keyword_results)}
+
+    # Sentinel ranks for results absent from a list
+    vec_sentinel = len(vector_results) + 1
+    kw_sentinel  = len(keyword_results) + 1
+
+    # Collect all unique chunk IDs and their raw data
+    by_id: dict[str, dict] = {}
     for r in vector_results:
         by_id[r["chunk_id"]] = {**r, "text_score": 0.0, "snippet": None}
-
     for r in keyword_results:
         cid = r["chunk_id"]
         if cid in by_id:
@@ -113,10 +140,12 @@ def _merge_results(
             by_id[cid] = {**r, "vector_score": 0.0}
 
     merged = []
-    for item in by_id.values():
+    for cid, item in by_id.items():
+        rv = vec_rank.get(cid, vec_sentinel)
+        rk = kw_rank.get(cid, kw_sentinel)
         item["score"] = (
-            vector_weight * item["vector_score"]
-            + text_weight * item["text_score"]
+            vector_weight  * (1.0 / (rrf_k + rv))
+            + keyword_weight * (1.0 / (rrf_k + rk))
         )
         merged.append(item)
 
@@ -340,8 +369,8 @@ def hybrid_search(
         source_filter=source_filter,
     )
 
-    # Step 4: Merge
-    merged = _merge_results(vec_results, kw_results, config.vector_weight)
+    # Step 4: Merge via RRF
+    merged = _merge_results(vec_results, kw_results, config.vector_weight, config.rrf_k)
 
     # Step 5: Cross-encoder reranking (optional)
     if config.rerank_model:

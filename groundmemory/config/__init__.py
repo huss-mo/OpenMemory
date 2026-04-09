@@ -190,8 +190,11 @@ class SearchConfig(BaseSettings):
 
     top_k: int = 6
     candidate_multiplier: int = 4
-    # keyword weight = 1 - vector_weight
+    # keyword weight = 1 - vector_weight (used as per-list weights in RRF)
     vector_weight: float = 0.7
+    # Reciprocal Rank Fusion k constant. Higher values reduce the impact of
+    # rank differences; standard default is 60.
+    rrf_k: int = 60
     temporal_decay_rate: float = 0.0
     mmr_lambda: float = 0.0
     # Cross-encoder reranking model (None = disabled).

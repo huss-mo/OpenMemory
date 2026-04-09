@@ -118,6 +118,8 @@ The exchange below is an example of what this looks like. The first session happ
 
 **A long-running autonomous agent that survives context limits.** Each new session calls `memory_bootstrap` to reload persisted facts, so the agent picks up exactly where the last one left off.
 
+**Automatic backup and restore when memory grows large.** When the memory context exceeds a configurable token threshold, GroundMemory automatically backs up the workspace to a timestamped zip archive before asking the agent to compact it. If something goes wrong, a single command restores the previous state: `groundmemory --restore -1`.
+
 ---
 
 ## What GroundMemory Does
