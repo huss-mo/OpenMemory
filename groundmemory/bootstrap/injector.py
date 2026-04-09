@@ -34,6 +34,9 @@ def _read_capped(path: Path, max_chars: int) -> tuple[str, bool]:
     """
     Read *path* and return (text, truncated).
 
+    When the file exceeds ``max_chars`` the **tail** (most recent content) is
+    kept and the head (older content) is dropped.  A truncation notice is
+    prepended to the returned text so the agent knows earlier content was cut.
     ``truncated`` is True when the file was longer than ``max_chars``.
     """
     if not path.exists():
@@ -41,14 +44,15 @@ def _read_capped(path: Path, max_chars: int) -> tuple[str, bool]:
     full = storage.read_file(path)
     if len(full) <= max_chars:
         return full, False
-    return full[:max_chars], True
+    tail = full[-max_chars:]
+    notice = "[TRUNCATED - earlier content was omitted; use memory_read to retrieve it]\n\n"
+    return notice + tail, True
 
 
 def _section(title: str, body: str, truncated: bool = False, source: str = "") -> str:
     """Wrap *body* in a labelled Markdown block."""
-    marker = " [TRUNCATED - use memory_get to read the rest]" if truncated else ""
     source_block = f" ({source})" if source else ""
-    return f"### {title}{marker}{source_block}\n\n{body}\n"
+    return f"### {title}{source_block}\n\n{body}\n"
 
 
 # ---------------------------------------------------------------------------
